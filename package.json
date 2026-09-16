@@ -1,0 +1,15 @@
+{
+  "name": "catalogos-microservices-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demo de catalogos REST con Express y arquitectura de microservicios",
+  "workspaces": [
+    "services/*"
+  ],
+  "scripts": {
+    "dev:gateway": "npm --workspace services/api-gateway run dev",
+    "dev:catalog": "npm --workspace services/catalog-service run dev",
+    "start:gateway": "npm --workspace services/api-gateway start",
+    "start:catalog": "npm --workspace services/catalog-service start"
+  }
+}
