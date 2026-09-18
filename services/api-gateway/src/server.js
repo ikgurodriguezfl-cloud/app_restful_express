@@ -1,11 +1,6 @@
-const express = require('express');
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/health', (_request, response) => {
-  response.json({ service: 'api-gateway', status: 'ok' });
-});
+const app = require('./app');
+const { port } = require('./config/env');
 
 app.listen(port, () => {
   console.log(`api-gateway listening on port ${port}`);
