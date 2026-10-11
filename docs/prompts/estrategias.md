@@ -1,0 +1,3 @@
+Este proyecto será uno integrador, esto quiere decir que se nos asignó distintos temas divididos en equipos y al final vamos a integrar lo de todos en un mismo proyecto, por ahora no quiero que hagas interfaces o programación.
+
+Verás, se nos asignó el modulo de estrategias Bull Call, Bull Put, Bear Call y Bear Put, necesito que hagas una investigación profunda y me indiques que colecciones se necesitan para implementar este modulo.

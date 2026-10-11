@@ -6,7 +6,9 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test:quant": "node --test src/quant/**/*.test.js",
+    "test:strategies": "node --test src/strategies/**/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

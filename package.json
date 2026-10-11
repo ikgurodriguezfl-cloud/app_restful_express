@@ -11,5 +11,8 @@
     "dev:catalog": "npm --workspace services/catalog-service run dev",
     "start:gateway": "npm --workspace services/api-gateway start",
     "start:catalog": "npm --workspace services/catalog-service start"
+  },
+  "dependencies": {
+    "openspec": "^0.0.0"
   }
 }
