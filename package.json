@@ -9,7 +9,9 @@
   "scripts": {
     "dev:gateway": "npm --workspace services/api-gateway run dev",
     "dev:catalog": "npm --workspace services/catalog-service run dev",
+    "dev:quant": "npm --workspace services/quant-service run dev",
     "start:gateway": "npm --workspace services/api-gateway start",
-    "start:catalog": "npm --workspace services/catalog-service start"
+    "start:catalog": "npm --workspace services/catalog-service start",
+    "start:quant": "npm --workspace services/quant-service start"
   }
 }

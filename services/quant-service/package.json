@@ -1,0 +1,15 @@
+{
+  "name": "quant-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microservicio para cálculo cuantitativo y motor de estrategias de opciones",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0"
+  }
+}

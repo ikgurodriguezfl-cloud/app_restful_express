@@ -1,6 +1,6 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { catalogServiceUrl } = require('./config/env');
+const { catalogServiceUrl, quantServiceUrl } = require('./config/env');
 const app = express();
 
 app.get('/health', (_request, response) => {
@@ -11,7 +11,7 @@ app.use(
   createProxyMiddleware({
     target: catalogServiceUrl,
     changeOrigin: true,
-    pathFilter: '/api/v1/catalogs',
+    pathFilter: (path) => path.startsWith('/api/v1/catalogs'),
     on: {
       error: (err, req, res) => {
         console.error('❌ Error de proxy hacia catalog-service:', err.message);
@@ -20,6 +20,30 @@ app.use(
         }
         res.end(JSON.stringify({
           message: 'No se pudo contactar al catalog-service.',
+          detail: err.message,
+        }));
+      },
+    },
+  }),
+);
+
+app.use(
+  createProxyMiddleware({
+    target: quantServiceUrl,
+    changeOrigin: true,
+    pathFilter: (path) => (
+      path.startsWith('/api/v1/quant') ||
+      path.startsWith('/api/v1/strategies') ||
+      path.startsWith('/api/v1/market-data')
+    ),
+    on: {
+      error: (err, req, res) => {
+        console.error('❌ Error de proxy hacia quant-service:', err.message);
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+        }
+        res.end(JSON.stringify({
+          message: 'No se pudo contactar al quant-service.',
           detail: err.message,
         }));
       },
