@@ -13,5 +13,9 @@
     "start:gateway": "npm --workspace services/api-gateway start",
     "start:catalog": "npm --workspace services/catalog-service start",
     "start:quant": "npm --workspace services/quant-service start"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.3"
   }
 }
