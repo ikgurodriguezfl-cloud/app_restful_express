@@ -7,7 +7,7 @@ Demo de una aplicacion REST con Express organizada como microservicios.
 - `services/api-gateway`: punto de entrada HTTP para los clientes.
 - `services/catalog-service`: servicio preparado para el dominio de catalogos.
 - `services/quant-service`: servicio base para cálculo cuantitativo, market data y estrategias de opciones.
-- `services/strategy-service`: capa de dominio, modelos y servicios de persistencia para F3; rutas y controladores quedan para una etapa posterior.
+- `services/strategy-service`: capa de dominio, modelos y servicios de persistencia para F3.
 - `catalogs-mongodb.md`: modelo de persistencia para MongoDB.
 - `catalogs-supabase-postgres.md`: modelo de persistencia para Supabase/Postgres.
 
@@ -22,10 +22,10 @@ Demo de una aplicacion REST con Express organizada como microservicios.
 - `POST /api/v1/strategies/evaluate`
 - `GET /api/v1/market-data/options-chains`
 
-El API Gateway conserva el prefijo `/api/v1`; las rutas HTTP de estrategias que ya existen se reenvían a `quant-service` (puerto 3002). El CRUD de F3 todavía no está expuesto por HTTP porque sus rutas y controladores se agregarán en una etapa posterior.
+El API Gateway conserva el prefijo `/api/v1`; las rutas HTTP de estrategias que ya existen se reenvían a `quant-service` (puerto 3002). 
 
 Configura `MONGODB_URI` y `MONGODB_DATABASE` para la persistencia de spreads; `STRATEGY_PORT` permite configurar el puerto del proceso de `strategy-service`.
 
-La implementación F3 incluye los modelos Mongoose `VerticalSpread` y `optionLeg` en `src/api/v1/models`, además de la lógica de dominio y operaciones de persistencia exportadas desde `src/api/v1/services`. Los directorios de controladores y rutas ya no contienen código hasta la siguiente etapa.
+La implementación F3 incluye los modelos Mongoose `VerticalSpread` y `optionLeg` en `src/api/v1/models`, además de la lógica de dominio y operaciones de persistencia exportadas desde `src/api/v1/services`.
 
 Cada servicio puede arrancar de forma independiente y expone un endpoint técnico `/health`. Ejecuta `npm run dev:strategy` para iniciar la conexión de `strategy-service` y `npm run test:strategy` para validar las reglas, el mapeo y los modelos de spreads.
