@@ -1,0 +1,85 @@
+# Requiere spread-service conectado a MongoDB (integración H).
+@baseUrl = http://localhost:3001/api/v1/spreads
+@spreadId = REEMPLAZAR_CON_OBJECT_ID
+@legId = REEMPLAZAR_CON_UUID
+
+### Crear spread (se permite borrador sin patas)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "key": "bull_call_aapl_demo",
+  "label": "Bull Call AAPL",
+  "underlyingTicker": "AAPL",
+  "currentStockPrice": 190,
+  "strategyType": "bull_call",
+  "spreadCategory": "debit",
+  "width": 5,
+  "netDebitOrCredit": -2,
+  "maxProfit": 300,
+  "maxLoss": 200,
+  "riskRewardRatio": 1.5,
+  "breakEvenPrice": 192,
+  "sigmaMultiplier": 1,
+  "calculatedSigmaValue": 5,
+  "legs": []
+}
+
+### Listar spreads
+GET {{baseUrl}}?underlyingTicker=AAPL&limit=20
+
+### Consultar spread
+GET {{baseUrl}}/{{spreadId}}
+
+### Actualización parcial
+PATCH {{baseUrl}}/{{spreadId}}
+Content-Type: application/json
+
+{ "label": "Bull Call actualizado" }
+
+### Reemplazar el arreglo de patas (IDs nuevos)
+PUT {{baseUrl}}/{{spreadId}}/legs
+Content-Type: application/json
+
+{
+  "legs": [
+    { "contractSymbol": "AAPL261218C00190000", "optionType": "call", "action": "buy", "strike": 190, "expirationDate": "2026-12-18", "ask": 4 },
+    { "contractSymbol": "AAPL261218C00195000", "optionType": "call", "action": "sell", "strike": 195, "expirationDate": "2026-12-18", "bid": 2 }
+  ]
+}
+
+### Consultar patas y copiar el UUID
+GET {{baseUrl}}/{{spreadId}}/legs
+
+### Consultar una pata
+GET {{baseUrl}}/{{spreadId}}/legs/{{legId}}
+
+### Modificar una pata
+PATCH {{baseUrl}}/{{spreadId}}/legs/{{legId}}
+Content-Type: application/json
+
+{ "ask": 4.1 }
+
+### Actualizar spreads por lote
+PATCH {{baseUrl}}/batch
+Content-Type: application/json
+
+{ "operations": [{ "spreadId": "{{spreadId}}", "changes": { "label": "Actualizado por lote" } }] }
+
+### Actualizar patas por lote
+PATCH {{baseUrl}}/{{spreadId}}/legs
+Content-Type: application/json
+
+{ "operations": [{ "legId": "{{legId}}", "changes": { "ask": 4.2 } }] }
+
+### Borrado lógico de patas por lote
+DELETE {{baseUrl}}/{{spreadId}}/legs
+Content-Type: application/json
+
+{ "legIds": ["{{legId}}"] }
+
+### Borrado lógico de spreads por lote
+DELETE {{baseUrl}}/batch
+Content-Type: application/json
+
+{ "spreadIds": ["{{spreadId}}"] }

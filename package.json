@@ -15,7 +15,8 @@
     "start:catalog": "npm --workspace services/catalog-service start",
     "start:quant": "npm --workspace services/quant-service start",
     "start:strategy": "npm --workspace services/strategy-service start",
-    "test:strategy": "npm --workspace services/strategy-service test"
+    "test:strategy": "npm --workspace services/strategy-service test",
+    "test:spread": "npm --workspace services/spread-service test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

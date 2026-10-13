@@ -1,6 +1,7 @@
 'use strict';
 
 const VerticalSpread = require('../models/vertical-spread.model');
+const input = require('./spread-input');
 
 /**
  * Capa de servicios para Vertical Spreads.
@@ -13,7 +14,9 @@ class SpreadService {
    * @returns {Promise<Object>} Spread creado con formato canónico.
    */
   async create(data) {
+    input.fields(data, ['key', 'createdBy', 'legs', ...input.spreadFields], ['key', ...input.spreadRequired]);
     const spread = new VerticalSpread(data);
+    spread.legs.forEach(leg => { leg.parentId = spread._id.toString(); });
     const saved = await spread.save();
     return saved.toJSON();
   }
@@ -55,6 +58,7 @@ class SpreadService {
    * @returns {Promise<Object|null>} Spread actualizado o null.
    */
   async updateById(id, updates) {
+    input.fields(updates, input.spreadFields);
     const spread = await VerticalSpread.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { $set: { ...updates, updatedAt: new Date() } },
@@ -89,66 +93,85 @@ class SpreadService {
    */
   async setLegs(spreadId, legs) {
     if (!Array.isArray(legs) || legs.length !== 2) {
-      throw new Error('Un vertical spread debe tener exactamente 2 patas (legs).');
+      input.fail('Un vertical spread debe tener exactamente 2 patas (legs).');
     }
-    const spread = await VerticalSpread.findOneAndUpdate(
-      { _id: spreadId, deletedAt: null },
-      { $set: { legs, updatedAt: new Date() } },
-      { new: true, runValidators: true }
-    ).lean();
-    return spread ? VerticalSpread.hydrate(spread).toJSON() : null;
+    legs.forEach(leg => input.fields(leg, input.legFields, input.legRequired));
+    const spread = await this.requireSpread(spreadId);
+    spread.legs = legs.map(leg => ({ ...leg, parentId: spread._id.toString() }));
+    await spread.save();
+    return spread.toJSON();
   }
 
-  /**
-   * Obtiene las patas de un spread.
-   * @param {string} spreadId - ID del spread padre.
-   * @returns {Promise<Object[]|null>} Array de legs o null si no existe.
-   */
+  async requireSpread(id) {
+    input.spreadId(id);
+    const spread = await VerticalSpread.findOne({ _id: id, deletedAt: null });
+    if (!spread) input.fail('Spread no encontrado.', 404);
+    return spread;
+  }
+
+  async replaceById(id, data) {
+    input.fields(data, [...input.spreadFields, 'legs'], [...input.spreadRequired, 'legs']);
+    const spread = await this.requireSpread(id);
+    input.spreadFields.forEach(field => { spread[field] = data[field]; });
+    if (!Array.isArray(data.legs) || ![0, 2].includes(data.legs.length)) input.fail('legs debe contener cero o dos patas.');
+    data.legs.forEach(leg => input.fields(leg, input.legFields, input.legRequired));
+    spread.legs = data.legs.map(leg => ({ ...leg, parentId: spread._id.toString() }));
+    await spread.save();
+    return spread.toJSON();
+  }
+
+  async runBatch(items, operation) {
+    if (!Array.isArray(items) || !items.length || items.length > 100) input.fail('Cada lote requiere entre 1 y 100 elementos.');
+    const results = [];
+    for (let index = 0; index < items.length; index += 1) {
+      try {
+        results.push({ index, success: true, spread: await operation(items[index]) });
+      } catch (error) {
+        const status = error.status || (['ValidationError', 'CastError'].includes(error.name) ? 400 : error.code === 11000 ? 409 : 500);
+        if (status >= 500) throw error;
+        results.push({ index, success: false, status, message: error.message });
+      }
+    }
+    return { atomic: false, results };
+  }
+
+  async getLeg(spreadId, legId) {
+    input.legId(legId);
+    const spread = await this.requireSpread(spreadId);
+    const leg = spread.legs.find(item => item.id === legId && !item.deletedAt);
+    if (!leg) input.fail('Pata no encontrada.', 404);
+    return leg.toObject();
+  }
+
   async getLegs(spreadId) {
-    const spread = await VerticalSpread.findOne({ _id: spreadId, deletedAt: null }).lean();
-    return spread ? spread.legs : null;
+    const spread = await this.requireSpread(spreadId);
+    return spread.legs.map(leg => leg.toObject());
   }
 
-  /**
-   * Actualiza una pata específica dentro del spread.
-   * @param {string} spreadId - ID del spread padre.
-   * @param {string} legId - ID de la pata (UUID).
-   * @param {Object} updates - Campos a actualizar en la pata.
-   * @returns {Promise<Object|null>} Spread con pata actualizada o null.
-   */
-  async updateLeg(spreadId, legId, updates) {
-    const spread = await VerticalSpread.findOne({ _id: spreadId, deletedAt: null });
-    if (!spread) return null;
-
-    const legIndex = spread.legs.findIndex(l => l.id === legId);
-    if (legIndex === -1) return null;
-
-    spread.legs[legIndex] = { ...spread.legs[legIndex].toObject(), ...updates };
-    spread.updatedAt = new Date();
+  async changeLegs(spreadId, operations, { replace = false, remove = false } = {}) {
+    if (!Array.isArray(operations) || !operations.length || operations.length > 100) input.fail('Se requieren entre 1 y 100 operaciones.');
+    input.ids(operations.map(operation => operation?.legId));
+    const spread = await this.requireSpread(spreadId);
+    for (const operation of operations) {
+      const index = spread.legs.findIndex(leg => leg.id === operation.legId && !leg.deletedAt);
+      if (index < 0) input.fail('Pata no encontrada.', 404);
+      const leg = spread.legs[index];
+      if (remove) {
+        leg.active = false;
+        leg.deletedAt = new Date();
+      } else {
+        input.fields(operation.changes, input.legFields, replace ? input.legRequired : []);
+        spread.legs[index] = {
+          ...(replace ? {} : leg.toObject()), ...operation.changes,
+          id: leg.id, parentId: spread._id.toString(), createdAt: leg.createdAt,
+          active: leg.active, deletedAt: leg.deletedAt,
+        };
+      }
+    }
     await spread.save();
     return spread.toJSON();
   }
 
-  /**
-   * Elimina (soft delete) una pata específica.
-   * Nota: Para mantener la integridad del vertical spread (2 legs), esto marca deletedAt.
-   * @param {string} spreadId - ID del spread padre.
-   * @param {string} legId - ID de la pata.
-   * @returns {Promise<Object|null>} Spread con pata marcada como borrada o null.
-   */
-  async deleteLeg(spreadId, legId) {
-    const spread = await VerticalSpread.findOne({ _id: spreadId, deletedAt: null });
-    if (!spread) return null;
-
-    const legIndex = spread.legs.findIndex(l => l.id === legId);
-    if (legIndex === -1) return null;
-
-    spread.legs[legIndex].deletedAt = new Date();
-    spread.legs[legIndex].active = false;
-    spread.updatedAt = new Date();
-    await spread.save();
-    return spread.toJSON();
-  }
 }
 
 module.exports = new SpreadService();

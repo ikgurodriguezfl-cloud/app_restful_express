@@ -1,203 +1,56 @@
 'use strict';
-
-const spreadService = require('../services/spread.service');
-
-/**
- * Helper para respuestas de error estandarizadas.
- */
-const errorResponse = (res, status, message, detail = null) => {
-  const body = { message };
-  if (detail) body.detail = detail;
-  return res.status(status).json(body);
+const service = require('../services/spread.service');
+const input = require('../services/spread-input');
+const found = (value) => {
+  if (value === null || value === undefined) input.fail('Spread no encontrado.', 404);
+  return value;
 };
-
-/**
- * Helper para validar ObjectId de MongoDB.
- */
-const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
-
-// ─── Vertical Spreads CRUD ────────────────────────────────────────────────
-
-/**
- * GET /api/v1/spreads
- * Lista spreads con filtros opcionales y paginación.
- * Query params: underlyingTicker, strategyType, active, limit, skip, sort
- */
-async function listSpreads(req, res) {
-  try {
-    const { underlyingTicker, strategyType, active, limit, skip, sort } = req.query;
-    const filters = {};
-    if (underlyingTicker) filters.underlyingTicker = underlyingTicker.toUpperCase();
-    if (strategyType) filters.strategyType = strategyType.toLowerCase();
-    if (active !== undefined) filters.active = active === 'true';
-
-    const options = {
-      limit: limit ? parseInt(limit, 10) : 50,
-      skip: skip ? parseInt(skip, 10) : 0,
-      sort: sort ? JSON.parse(sort) : { createdAt: -1 },
-    };
-
-    const result = await spreadService.findAll(filters, options);
-    res.json(result);
-  } catch (err) {
-    errorResponse(res, 400, 'Error al listar spreads', err.message);
-  }
-}
-
-/**
- * POST /api/v1/spreads
- * Crea un nuevo Vertical Spread.
- * Body: { key, label, description, underlyingTicker, currentStockPrice, strategyType, spreadCategory, width, netDebitOrCredit, maxProfit, maxLoss, riskRewardRatio, breakEvenPrice, sigmaMultiplier, calculatedSigmaValue, legs?, createdBy }
- */
-async function createSpread(req, res) {
-  try {
-    const spread = await spreadService.create(req.body);
-    res.status(201).json(spread);
-  } catch (err) {
-    const status = err.name === 'ValidationError' ? 400 : 500;
-    errorResponse(res, status, 'Error al crear spread', err.message);
-  }
-}
-
-/**
- * GET /api/v1/spreads/:id
- * Obtiene un spread por ID (ObjectId) o key.
- */
-async function getSpread(req, res) {
-  try {
-    const { id } = req.params;
-    const spread = await spreadService.findById(id);
-    if (!spread) return errorResponse(res, 404, 'Spread no encontrado');
-    res.json(spread);
-  } catch (err) {
-    errorResponse(res, 400, 'Error al obtener spread', err.message);
-  }
-}
-
-/**
- * PATCH /api/v1/spreads/:id
- * Actualiza parcialmente un spread.
- * Body: campos permitidos del modelo (excluye _id, key, createdAt, legs).
- */
-async function updateSpread(req, res) {
-  try {
-    const { id } = req.params;
-    if (!isValidObjectId(id)) return errorResponse(res, 400, 'ID inválido');
-
-    const { _id, key, createdAt, legs, ...allowedUpdates } = req.body;
-    const spread = await spreadService.updateById(id, allowedUpdates);
-    if (!spread) return errorResponse(res, 404, 'Spread no encontrado');
-    res.json(spread);
-  } catch (err) {
-    const status = err.name === 'ValidationError' ? 400 : 500;
-    errorResponse(res, status, 'Error al actualizar spread', err.message);
-  }
-}
-
-/**
- * DELETE /api/v1/spreads/:id
- * Soft delete de un spread.
- * Body opcional: { deletedBy }
- */
-async function deleteSpread(req, res) {
-  try {
-    const { id } = req.params;
-    if (!isValidObjectId(id)) return errorResponse(res, 400, 'ID inválido');
-
-    const { deletedBy } = req.body;
-    const spread = await spreadService.softDeleteById(id, deletedBy);
-    if (!spread) return errorResponse(res, 404, 'Spread no encontrado');
-    res.json({ message: 'Spread eliminado (soft delete)', spread });
-  } catch (err) {
-    errorResponse(res, 500, 'Error al eliminar spread', err.message);
-  }
-}
-
-// ─── Legs (Subdocumentos) ────────────────────────────────────────────────
-
-/**
- * GET /api/v1/spreads/:spreadId/legs
- * Obtiene las patas de un spread.
- */
-async function getLegs(req, res) {
-  try {
-    const { spreadId } = req.params;
-    if (!isValidObjectId(spreadId)) return errorResponse(res, 400, 'ID de spread inválido');
-
-    const legs = await spreadService.getLegs(spreadId);
-    if (legs === null) return errorResponse(res, 404, 'Spread no encontrado');
-    res.json(legs);
-  } catch (err) {
-    errorResponse(res, 400, 'Error al obtener patas', err.message);
-  }
-}
-
-/**
- * POST /api/v1/spreads/:spreadId/legs
- * Reemplaza las 2 patas del spread (set completo).
- * Body: [ { contractSymbol, optionType, action, strike, expirationDate, bid?, ask?, impliedVolatility?, delta?, gamma?, theta?, vega? }, ... ]
- * Debe enviar exactamente 2 legs.
- */
-async function setLegs(req, res) {
-  try {
-    const { spreadId } = req.params;
-    if (!isValidObjectId(spreadId)) return errorResponse(res, 400, 'ID de spread inválido');
-
-    const legs = req.body;
-    const spread = await spreadService.setLegs(spreadId, legs);
-    if (!spread) return errorResponse(res, 404, 'Spread no encontrado');
-    res.status(201).json(spread);
-  } catch (err) {
-    const status = err.message.includes('exactamente 2 patas') ? 400 : 500;
-    errorResponse(res, status, 'Error al establecer patas', err.message);
-  }
-}
-
-/**
- * PATCH /api/v1/spreads/:spreadId/legs/:legId
- * Actualiza una pata específica.
- * Body: campos permitidos de la pata (excluye id, parentId, createdAt).
- */
-async function updateLeg(req, res) {
-  try {
-    const { spreadId, legId } = req.params;
-    if (!isValidObjectId(spreadId)) return errorResponse(res, 400, 'ID de spread inválido');
-
-    const { id, parentId, createdAt, ...allowedUpdates } = req.body;
-    const spread = await spreadService.updateLeg(spreadId, legId, allowedUpdates);
-    if (!spread) return errorResponse(res, 404, 'Spread o pata no encontrados');
-    res.json(spread);
-  } catch (err) {
-    const status = err.name === 'ValidationError' ? 400 : 500;
-    errorResponse(res, status, 'Error al actualizar pata', err.message);
-  }
-}
-
-/**
- * DELETE /api/v1/spreads/:spreadId/legs/:legId
- * Soft delete de una pata específica.
- */
-async function deleteLeg(req, res) {
-  try {
-    const { spreadId, legId } = req.params;
-    if (!isValidObjectId(spreadId)) return errorResponse(res, 400, 'ID de spread inválido');
-
-    const spread = await spreadService.deleteLeg(spreadId, legId);
-    if (!spread) return errorResponse(res, 404, 'Spread o pata no encontrados');
-    res.json({ message: 'Pata eliminada (soft delete)', spread });
-  } catch (err) {
-    errorResponse(res, 500, 'Error al eliminar pata', err.message);
-  }
-}
-
+const handle = (operation, status = 200) => async (req, res, next) => {
+  try { res.status(status).json(found(await operation(req))); }
+  catch (error) { next(error); }
+};
+const id = (req) => input.spreadId(req.params.id);
+const parent = (req) => input.spreadId(req.params.spreadId);
+const body = (req) => input.object(req.body);
 module.exports = {
-  listSpreads,
-  createSpread,
-  getSpread,
-  updateSpread,
-  deleteSpread,
-  getLegs,
-  setLegs,
-  updateLeg,
-  deleteLeg,
+  listSpreads: handle(req => {
+    const { underlyingTicker, strategyType, active, limit = 50, skip = 0, sort } = req.query;
+    const filters = {};
+    if (underlyingTicker) filters.underlyingTicker = String(underlyingTicker).toUpperCase();
+    if (strategyType) filters.strategyType = String(strategyType).toLowerCase();
+    if (active !== undefined) {
+      if (!['true', 'false'].includes(active)) input.fail('active debe ser true o false.');
+      filters.active = active === 'true';
+    }
+    if (!Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) input.fail('limit debe estar entre 1 y 100.');
+    if (!Number.isInteger(Number(skip)) || Number(skip) < 0) input.fail('skip debe ser un entero no negativo.');
+    let order = { createdAt: -1 };
+    if (sort !== undefined) {
+      try { order = JSON.parse(sort); } catch { input.fail('sort debe ser JSON válido.'); }
+      input.object(order);
+      if (Object.entries(order).some(([key, value]) => !['createdAt', 'updatedAt', 'underlyingTicker', 'strategyType'].includes(key) || ![1, -1].includes(value))) input.fail('Ordenamiento inválido.');
+    }
+    return service.findAll(filters, { limit: Number(limit), skip: Number(skip), sort: order });
+  }),
+  createSpread: handle(req => service.create(body(req)), 201),
+  getSpread: handle(req => service.findById(req.params.id)),
+  updateSpread: handle(req => service.updateById(id(req), input.fields(body(req), input.spreadFields))),
+  replaceSpread: handle(req => service.replaceById(id(req), body(req))),
+  deleteSpread: handle(async req => ({ message: 'Spread eliminado (soft delete)', spread: found(await service.softDeleteById(id(req), req.body?.deletedBy)) })),
+  createSpreadsBatch: handle(req => service.runBatch(body(req).spreads, data => service.create(data)), 201),
+  updateSpreadsBatch: handle(req => service.runBatch(body(req).operations, async operation => {
+    input.object(operation);
+    const spread = await service.updateById(input.spreadId(operation.spreadId), input.fields(operation.changes, input.spreadFields));
+    return found(spread);
+  })),
+  deleteSpreadsBatch: handle(req => service.runBatch(body(req).spreadIds, async spreadId => found(await service.softDeleteById(input.spreadId(spreadId), req.body.deletedBy)))),
+  getLegs: handle(req => service.getLegs(parent(req))),
+  getLeg: handle(req => service.getLeg(parent(req), input.legId(req.params.legId))),
+  setLegs: handle(req => service.setLegs(parent(req), req.body), 201),
+  replaceLegs: handle(req => service.setLegs(parent(req), body(req).legs)),
+  updateLeg: handle(req => service.changeLegs(parent(req), [{ legId: input.legId(req.params.legId), changes: body(req) }])),
+  replaceLeg: handle(req => service.changeLegs(parent(req), [{ legId: input.legId(req.params.legId), changes: body(req) }], { replace: true })),
+  deleteLeg: handle(async req => ({ message: 'Pata eliminada (soft delete)', spread: await service.changeLegs(parent(req), [{ legId: input.legId(req.params.legId) }], { remove: true }) })),
+  updateLegsBatch: handle(req => service.changeLegs(parent(req), body(req).operations)),
+  deleteLegsBatch: handle(req => service.changeLegs(parent(req), input.ids(body(req).legIds).map(legId => ({ legId })), { remove: true })),
 };

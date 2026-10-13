@@ -15,6 +15,17 @@ const {
   deleteLeg,
 } = require('../controllers/spread.controller');
 
+const extra = require('../controllers/spread.controller');
+// Las rutas de lote preceden a /:id para evitar ambigüedad.
+router.post('/batch', extra.createSpreadsBatch);
+router.patch('/batch', extra.updateSpreadsBatch);
+router.delete('/batch', extra.deleteSpreadsBatch);
+router.put('/:id', extra.replaceSpread);
+router.get('/:spreadId/legs/:legId', extra.getLeg);
+router.put('/:spreadId/legs', extra.replaceLegs);
+router.put('/:spreadId/legs/:legId', extra.replaceLeg);
+router.patch('/:spreadId/legs', extra.updateLegsBatch);
+router.delete('/:spreadId/legs', extra.deleteLegsBatch);
 // ─── Vertical Spreads ─────────────────────────────────────────────────────
 
 /**
