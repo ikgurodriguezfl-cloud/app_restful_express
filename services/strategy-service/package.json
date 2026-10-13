@@ -1,0 +1,17 @@
+{
+  "name": "strategy-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microservicio REST para estrategias verticales de opciones",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "mongoose": "^9.10.1"
+  }
+}
