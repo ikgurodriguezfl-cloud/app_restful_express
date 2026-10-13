@@ -1,12 +1,7 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { catalogServiceUrl, quantServiceUrl, strategyServiceUrl } = require('./config/env');
+const { catalogServiceUrl, quantServiceUrl } = require('./config/env');
 const app = express();
-
-const isStrategySetupPath = (path) => (
-  path === '/api/v1/strategies/setups'
-  || path.startsWith('/api/v1/strategies/setups/')
-);
 
 app.get('/health', (_request, response) => {
   response.json({ service: 'api-gateway', status: 'ok' });
@@ -34,33 +29,12 @@ app.use(
 
 app.use(
   createProxyMiddleware({
-    target: strategyServiceUrl,
-    changeOrigin: true,
-    pathFilter: isStrategySetupPath,
-    on: {
-      error: (err, req, res) => {
-        console.error('❌ Error de proxy hacia strategy-service:', err.message);
-        if (!res.headersSent) {
-          res.writeHead(502, { 'Content-Type': 'application/json' });
-        }
-        res.end(JSON.stringify({
-          message: 'No se pudo contactar al strategy-service.',
-          detail: err.message,
-        }));
-      },
-    },
-  }),
-);
-
-app.use(
-  createProxyMiddleware({
     target: quantServiceUrl,
     changeOrigin: true,
     pathFilter: (path) => (
-      (path.startsWith('/api/v1/quant') ||
-        path.startsWith('/api/v1/strategies') ||
-        path.startsWith('/api/v1/market-data')) &&
-      !isStrategySetupPath(path)
+      path.startsWith('/api/v1/quant') ||
+      path.startsWith('/api/v1/strategies') ||
+      path.startsWith('/api/v1/market-data')
     ),
     on: {
       error: (err, req, res) => {
