@@ -1,3 +1,5 @@
+const { evaluateVerticalSpread } = require('../../../services/vertical-spread');
+
 const strategyCatalog = [
   {
     code: 'LONG_CALL',
@@ -12,6 +14,27 @@ const strategyCatalog = [
     expectedLegs: 2,
     phase: 'F3',
     description: 'Spread vertical alcista con riesgo limitado y beneficio acotado.',
+  },
+  {
+    code: 'BULL_PUT_SPREAD',
+    name: 'Bull Put Spread',
+    expectedLegs: 2,
+    phase: 'F3',
+    description: 'Spread vertical alcista de crédito con riesgo limitado.',
+  },
+  {
+    code: 'BEAR_CALL_SPREAD',
+    name: 'Bear Call Spread',
+    expectedLegs: 2,
+    phase: 'F3',
+    description: 'Spread vertical bajista de crédito con riesgo limitado.',
+  },
+  {
+    code: 'BEAR_PUT_SPREAD',
+    name: 'Bear Put Spread',
+    expectedLegs: 2,
+    phase: 'F3',
+    description: 'Spread vertical bajista de débito con riesgo limitado.',
   },
   {
     code: 'IRON_CONDOR',
@@ -69,41 +92,22 @@ const buildStrategyTemplate = (request, response) => {
 };
 
 const evaluateStrategy = (request, response) => {
-  const { strategyType = 'LONG_CALL', underlyingPrice = 0, premium = 0, quantity = 1, legs = [] } = request.body || {};
-
-  const netPremium = Number((premium || 0) * quantity);
-  const maxProfit = Number((underlyingPrice || 0) * quantity * 0.1);
-  const maxLoss = Number(Math.max((netPremium || 0), 1));
-  const breakEven = Number((underlyingPrice || 0) + (premium || 0));
-
-  response.status(200).json({
-    strategyType,
-    symbol: request.body?.symbol || 'AAPL',
-    netPremium,
-    breakEven,
-    maxProfit,
-    maxLoss,
-    greeks: {
-      delta: 0.5,
-      gamma: 0.012,
-      theta: -0.03,
-      vega: 0.2,
-      rho: 0.12,
-    },
-    legs: legs.length ? legs : [{
-      legId: 'leg-1',
-      type: 'option',
-      side: 'long',
-      quantity,
-      premium,
-    }],
-    assumptions: {
-      underlyingPrice,
-      quantity,
-      model: 'black-scholes',
-    },
-    evaluatedAt: new Date().toISOString(),
-  });
+  try {
+    const result = evaluateVerticalSpread(request.body || {});
+    return response.status(200).json({
+      ...result,
+      assumptions: {
+        underlyingPrice: Number(request.body?.underlyingPrice || 0),
+        model: 'vertical-spread',
+        dataSource: 'mock',
+      },
+    });
+  } catch (error) {
+    return response.status(400).json({
+      message: 'No se pudo evaluar el spread vertical.',
+      detail: error.message,
+    });
+  }
 };
 
 const getSetups = (_request, response) => {

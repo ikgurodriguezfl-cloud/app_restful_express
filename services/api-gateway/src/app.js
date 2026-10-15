@@ -34,7 +34,8 @@ app.use(
     pathFilter: (path) => (
       path.startsWith('/api/v1/quant') ||
       path.startsWith('/api/v1/strategies') ||
-      path.startsWith('/api/v1/market-data')
+      path.startsWith('/api/v1/market-data') ||
+      path.startsWith('/api/v1/broker')
     ),
     on: {
       error: (err, req, res) => {
