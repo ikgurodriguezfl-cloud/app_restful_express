@@ -1,8 +1,16 @@
 const express = require('express');
+const cors = require('cors');
 
 const apiRoutes = require('./api/v1/routes');
 
 const app = express();
+
+// CORS: permitir peticiones desde la GUI (localhost:3005) y otros orígenes en desarrollo
+app.use(cors({
+  origin: ['http://localhost:3005', 'http://127.0.0.1:3005', '*'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(express.json());
 

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trading Dashboard — Estrategias de Opciones</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-hover: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --border: #334155;
+    }
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
+    header h1 span { color: var(--accent); }
+    .services-status {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .service-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--panel-hover);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 2px rgba(239,68,68,0.2);
+    }
+    .dot.online { background: var(--success); box-shadow: 0 0 0 2px rgba(34,197,94,0.3); }
+    .dot.offline { background: var(--danger); }
+    .dot.starting { background: var(--warning); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    .container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 60px);
+    }
+
+    aside { display: flex; flex-direction: column; gap: 1rem; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card h2 button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .card h2 button:hover { background: var(--panel-hover); }
+
+    label { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; display: block; }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .full { grid-column: 1 / -1; }
+
+    .btn {
+      padding: 0.7rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-warning { background: var(--warning); color: #fff; }
+    .btn-warning:hover { background: #d97706; }
+    .btn-secondary { background: var(--panel-hover); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #475569; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+    .strategy-chip {
+      padding: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .strategy-chip:hover { background: var(--panel-hover); }
+    .strategy-chip.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    main { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .metric-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .metric-card .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+    .metric-card .value.pos { color: var(--success); }
+    .metric-card .value.neg { color: var(--danger); }
+    .metric-card .value.neutral { color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--panel-hover); color: var(--muted); font-size: 0.8rem; text-transform: uppercase; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0f172a; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-debit { background: rgba(239,68,68,0.2); color: var(--danger); }
+    .badge-credit { background: rgba(34,197,94,0.2); color: var(--success); }
+
+    #log { 
+      grid-column: 1 / -1; 
+      font-family: monospace; 
+      font-size: 0.8rem; 
+      background: #020617; 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      padding: 1rem; 
+      max-height: 200px; 
+      overflow-y: auto; 
+      color: var(--muted);
+    }
+    .log-line { margin-bottom: 0.4rem; }
+    .log-time { color: var(--muted); margin-right: 0.5rem; }
+
+    .hidden { display: none !important; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .alert {
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .alert-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); }
+    .alert-info { background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span>▶</span> Trading Dashboard</h1>
+  <div class="services-status" id="servicesStatus">
+    <!-- chips inyectados por JS -->
+  </div>
+</header>
+
+<div class="container">
+  <aside>
+    <div class="card">
+      <h2>Servicios <button id="btnRefreshStatus">⟳</button></h2>
+      <div id="servicesList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Logs</h2>
+      <div id="log" class="log"></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Alertas -->
+    <div id="alertContainer"></div>
+
+    <!-- Selección de estrategia -->
+    <div class="card">
+      <h2>Configurar Estrategia</h2>
+
+      <div class="strategy-grid" id="strategyGrid">
+        <div class="strategy-chip active" data-strategy="BULL_CALL_SPREAD">Bull Call</div>
+        <div class="strategy-chip" data-strategy="BEAR_CALL_SPREAD">Bear Call</div>
+        <div class="strategy-chip" data-strategy="BULL_PUT_SPREAD">Bull Put</div>
+        <div class="strategy-chip" data-strategy="BEAR_PUT_SPREAD">Bear Put</div>
+      </div>
+
+      <form id="strategyForm" class="row">
+        <div class="full">
+          <label>Etiqueta / Label</label>
+          <input type="text" id="label" placeholder="Ej: Mi Bull Call AAPL" required />
+        </div>
+        <div>
+          <label>Símbolo (Ticker)</label>
+          <input type="text" id="symbol" value="AAPL" required />
+        </div>
+        <div>
+          <label>Vencimiento (YYYY-MM-DD)</label>
+          <input type="text" id="expiration" value="2026-12-18" required />
+        </div>
+        <div class="full">
+          <label>Strike Compra (Long) — precio unitario</label>
+          <input type="number" id="strikeLong" step="0.01" required />
+        </div>
+        <div class="full">
+          <label>Strike Venta (Short) — precio unitario</label>
+          <input type="number" id="strikeShort" step="0.01" required />
+        </div>
+        <div class="full">
+          <label>Precio Compra (Ask) — leave blank to fetch from Alpaca</label>
+          <input type="number" id="priceLong" step="0.01" placeholder="auto" />
+        </div>
+        <div class="full">
+          <label>Precio Venta (Bid) — leave blank to fetch from Alpaca</label>
+          <input type="number" id="priceShort" step="0.01" placeholder="auto" />
+        </div>
+        <div>
+          <label>Cantidad de contratos</label>
+          <input type="number" id="quantity" value="1" min="1" required />
+        </div>
+        <div>
+          <label>Multiplicador</label>
+          <input type="number" id="multiplier" value="100" min="1" required />
+        </div>
+      </form>
+
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+        <button type="button" class="btn btn-warning" id="btnFetchQuotes">📊 Obtener cotizaciones (Alpaca)</button>
+        <button type="button" class="btn btn-primary btn-block" id="btnEvaluate">🧮 Evaluar estrategia</button>
+      </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card" id="resultsCard" style="display:none;">
+      <h2>Resultado</h2>
+      <div class="results-grid" id="resultsGrid"></div>
+      <div style="margin-top:1rem;">
+        <table>
+          <thead>
+            <tr><th>Pata</th><th>Acción</th><th>Tipo</th><th>Strike</th><th>Precio</th></tr>
+          </thead>
+          <tbody id="legsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="card">
+      <h2>Historial de Estrategias</h2>
+      <table>
+        <thead>
+          <tr><th>Etiqueta</th><th>Tipo</th><th>Símbolo</th><th>Débito/Crédito</th><th>Máx. Pérdida</th><th>Máx. Ganancia</th><th>Break Even</th></tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_BASE = '';
+let selectedStrategy = 'BULL_CALL_SPREAD';
+let history = JSON.parse(localStorage.getItem('td_history') || '[]');
+
+// ---- Servicios ----
+async function refreshServices() {
+  try {
+    const res = await fetch(`${API_BASE}/api/services/status`);
+    const data = await res.json();
+    renderServices(data);
+  } catch (e) {
+    log('Error consultando estado de servicios: ' + e.message);
+  }
+}
+
+function renderServices(status) {
+  const container = document.getElementById('servicesList');
+  const headerStatus = document.getElementById('servicesStatus');
+  container.innerHTML = '';
+  headerStatus.innerHTML = '';
+
+  for (const [key, svc] of Object.entries(status)) {
+    const chip = document.createElement('div');
+    chip.className = 'service-chip';
+    const dotClass = svc.running ? 'online' : 'offline';
+    chip.innerHTML = `<div class="dot ${dotClass}"></div>${svc.name} <small>:${svc.port}</small>`;
+    container.appendChild(chip);
+
+    const hChip = chip.cloneNode(true);
+    headerStatus.appendChild(hChip);
+
+    const btnStart = document.createElement('button');
+    btnStart.className = 'btn btn-success btn-block';
+    btnStart.textContent = svc.running ? 'Detener' : 'Iniciar';
+    btnStart.onclick = () => toggleService(key, svc.running);
+    container.appendChild(btnStart);
+  }
+}
+
+async function toggleService(name, running) {
+  const action = running ? 'stop' : 'start';
+  try {
+    await fetch(`${API_BASE}/api/services/${name}/${action}`, { method: 'POST' });
+    log(`${action === 'start' ? 'Iniciando' : 'Deteniendo'} ${name}...`);
+    setTimeout(refreshServices, 1500);
+  } catch (e) {
+    showAlert('Error: ' + e.message, 'error');
+  }
+}
+
+function log(msg) {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function showAlert(msg, type = 'info') {
+  const container = document.getElementById('alertContainer');
+  const div = document.createElement('div');
+  div.className = `alert alert-${type}`;
+  div.textContent = msg;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+
+// ---- Selección de estrategia ----
+document.querySelectorAll('.strategy-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.strategy-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedStrategy = chip.dataset.strategy;
+  });
+});
+
+// URL directa a quant-service (evita el proxy roto del gateway)
+const QUANT_SERVICE_URL = 'http://localhost:3002';
+
+// ---- Fetch cotizaciones ----
+document.getElementById('btnFetchQuotes').addEventListener('click', async () => {
+  const symbol = document.getElementById('symbol').value.trim();
+  const expiration = document.getElementById('expiration').value.trim();
+  if (!symbol || !expiration) {
+    showAlert('Ingresa símbolo y vencimiento primero.', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnFetchQuotes');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Consultando Alpaca...';
+  try {
+    // Llamada DIRECTA a quant-service (puerto 3002)
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/market-data/options-chains?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&limit=200`);
+    if (!res.ok) throw new Error(`quant-service respondió ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+
+    const calls = data.contracts?.filter(c => c.type === 'call' && c.bid && c.ask) || [];
+    if (calls.length === 0) throw new Error('No hay contratos call disponibles para este símbolo y vencimiento en Alpaca.');
+
+    calls.sort((a, b) => a.strike - b.strike);
+    const spot = (calls[0].bid + calls[0].ask) / 2;
+    // Encontrar strikes cercanos al spot
+    const midIdx = calls.findIndex(c => c.strike > spot);
+    const lower = calls[midIdx - 1] || calls[0];
+    const higher = calls[midIdx] || calls[calls.length - 1];
+
+    document.getElementById('strikeLong').value = lower.strike;
+    document.getElementById('strikeShort').value = higher.strike;
+    document.getElementById('priceLong').value = lower.ask;
+    document.getElementById('priceShort').value = higher.bid;
+
+    log(`Cotizaciones obtenidas de Alpaca: Long strike=$${lower.strike} ask=$${lower.ask}, Short strike=$${higher.strike} bid=$${higher.bid}`);
+    showAlert(`Cotizaciones obtenidas de Alpaca (spot: $${spot.toFixed(2)}).`, 'info');
+  } catch (e) {
+    showAlert(e.message, 'error');
+    log('Error fetch quotes: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📊 Obtener cotizaciones (Alpaca)';
+  }
+});
+
+// ---- Evaluar ----
+document.getElementById('btnEvaluate').addEventListener('click', async () => {
+  const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+  const expiration = document.getElementById('expiration').value.trim();
+  const strikeLong = Number(document.getElementById('strikeLong').value);
+  const strikeShort = Number(document.getElementById('strikeShort').value);
+  const priceLong = document.getElementById('priceLong').value.trim();
+  const priceShort = document.getElementById('priceShort').value.trim();
+  const quantity = Number(document.getElementById('quantity').value || 1);
+  const multiplier = Number(document.getElementById('multiplier').value || 100);
+
+  // Validaciones básicas
+  if (!symbol || !expiration) {
+    showAlert('Ingresa símbolo y vencimiento.', 'error');
+    return;
+  }
+  if (!strikeLong || !strikeShort) {
+    showAlert('Ingresa ambos strikes.', 'error');
+    return;
+  }
+  if (!priceLong || !priceShort) {
+    showAlert('Ingresa ambos precios (compra y venta). Usa "Obtener cotizaciones" o escríbelos manualmente.', 'error');
+    return;
+  }
+
+  const body = {
+    strategyType: selectedStrategy,
+    symbol,
+    expiration,
+    quantity,
+    multiplier,
+    legs: [
+      {
+        type: selectedStrategy.includes('CALL') ? 'call' : 'put',
+        side: selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BULL_PUT_SPREAD' ? 'buy' : 'sell',
+        strike: strikeLong,
+        price: Number(priceLong),
+      },
+      {
+        type: selectedStrategy.includes('CALL') ? 'call' : 'put',
+        side: selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BULL_PUT_SPREAD' ? 'sell' : 'buy',
+        strike: strikeShort,
+        price: Number(priceShort),
+      },
+    ],
+  };
+
+  // Normalizar lados según definición de spread
+  if (selectedStrategy === 'BEAR_CALL_SPREAD') {
+    body.legs[0].side = 'sell';
+    body.legs[1].side = 'buy';
+  } else if (selectedStrategy === 'BEAR_PUT_SPREAD') {
+    body.legs[0].side = 'buy';
+    body.legs[1].side = 'sell';
+  }
+
+  const btn = document.getElementById('btnEvaluate');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Evaluando...';
+  try {
+    let result;
+    // Intentar vía quant-service directo primero
+    try {
+      const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/strategies/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`quant-service respondió ${res.status}`);
+      result = await res.json();
+      result.source = 'quant-service';
+    } catch (e) {
+      // Fallback a evaluación local en la GUI
+      const res2 = await fetch(`${API_BASE}/api/evaluate/local`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res2.ok) {
+        const errData = await res2.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Evaluación local falló');
+      }
+      result = await res2.json();
+    }
+
+    renderResults(result, body);
+    addToHistory(body, result);
+    showAlert('Estrategia evaluada correctamente.', 'info');
+  } catch (e) {
+    showAlert('Error evaluando: ' + e.message, 'error');
+    log('Error evaluate: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧮 Evaluar estrategia';
+  }
+});
+
+function renderResults(result, input) {
+  const card = document.getElementById('resultsCard');
+  card.style.display = 'block';
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+
+  const spreadType = input.strategyType.includes('CALL') ? 'call' : 'put';
+  const isDebit = result.spreadCategory === 'debit';
+
+  const metrics = [
+    { label: 'Estrategia', value: input.strategyType, neutral: true },
+    { label: 'Símbolo', value: input.symbol, neutral: true },
+    { label: 'Vencimiento', value: input.expiration, neutral: true },
+    { label: 'Categoría', value: result.spreadCategory.toUpperCase(), neutral: true },
+    { label: 'Débito/Crédito Neto', value: `$${result.netDebitOrCredit?.toFixed(2) ?? (isDebit ? result.netDebit : -result.netCredit).toFixed(2)}`, pos: !isDebit, neg: isDebit },
+    { label: 'Máx. Pérdida', value: `$${result.maxLoss?.toFixed(2) ?? result.maxRisk.toFixed(2)}`, neg: true },
+    { label: 'Máx. Ganancia', value: `$${result.maxProfit?.toFixed(2) ?? result.maxBenefit.toFixed(2)}`, pos: true },
+    { label: 'Break Even', value: `$${result.breakEven?.toFixed(2) ?? result.breakEvenPrice.toFixed(2)}`, neutral: true },
+    { label: 'Risk/Reward', value: `1:${result.riskRewardRatio?.toFixed(2)}`, neutral: true },
+  ];
+
+  metrics.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'metric-card';
+    el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+    grid.appendChild(el);
+  });
+
+  const tbody = document.getElementById('legsTable');
+  tbody.innerHTML = '';
+  (result.legs || []).forEach((leg, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${leg.side.toUpperCase()}</td><td>${leg.type}</td><td>$${leg.strike}</td><td>$${leg.price}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+function addToHistory(input, result) {
+  const entry = {
+    id: Date.now(),
+    label: document.getElementById('label').value.trim() || input.strategyType,
+    type: input.strategyType,
+    symbol: input.symbol,
+    net: result.netDebitOrCredit ?? (result.spreadCategory === 'debit' ? -result.netDebit : result.netCredit),
+    maxLoss: result.maxLoss ?? result.maxRisk,
+    maxProfit: result.maxProfit ?? result.maxBenefit,
+    breakEven: result.breakEven ?? result.breakEvenPrice,
+    createdAt: new Date().toISOString(),
+  };
+  history.unshift(entry);
+  if (history.length > 50) history.pop();
+  localStorage.setItem('td_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('historyTable');
+  tbody.innerHTML = '';
+  history.forEach(h => {
+    const tr = document.createElement('tr');
+    const isDebit = h.net < 0;
+    tr.innerHTML = `
+      <td>${h.label}</td>
+      <td>${h.type}</td>
+      <td>${h.symbol}</td>
+      <td><span class="badge ${isDebit ? 'badge-debit' : 'badge-credit'}">${isDebit ? 'Debit' : 'Credit'} $${Math.abs(h.net).toFixed(2)}</span></td>
+      <td>$${h.maxLoss.toFixed(2)}</td>
+      <td>$${h.maxProfit.toFixed(2)}</td>
+      <td>$${h.breakEven.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- Init ----
+refreshServices();
+setInterval(refreshServices, 10000);
+renderHistory();
+log('Dashboard listo. Inicia los servicios desde el panel izquierdo.');
+</script>
+
+</body>
+</html>

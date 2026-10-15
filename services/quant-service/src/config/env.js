@@ -5,7 +5,7 @@ dotenv.config({
   path: path.resolve(__dirname, '../../../../.env'),
 });
 
-const port = Number(process.env.PORT || 3002);
+const port = Number(process.env.QUANT_PORT || 3002);
 const brokerProvider = process.env.BROKER_PROVIDER || 'alpaca';
 const alpacaKeyId = process.env.ALPACA_API_KEY_ID || process.env.ClientID;
 const alpacaSecretKey = process.env.ALPACA_API_SECRET_KEY || process.env.ClientSecret;

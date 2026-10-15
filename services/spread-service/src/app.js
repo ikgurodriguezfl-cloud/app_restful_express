@@ -8,6 +8,5 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', service: 'spread-service' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Spread-service corriendo en el puerto ${PORT}`);
-});
+// Nota: el listen se hace desde server.js para evitar doble escucha
+module.exports = app;
