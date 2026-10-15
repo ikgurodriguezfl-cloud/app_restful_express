@@ -94,12 +94,15 @@ const buildStrategyTemplate = (request, response) => {
 const evaluateStrategy = (request, response) => {
   try {
     const result = evaluateVerticalSpread(request.body || {});
+    const hasBrokerQuotes = (request.body?.legs || []).some((leg) => (
+      leg.bid !== undefined || leg.ask !== undefined
+    ));
     return response.status(200).json({
       ...result,
       assumptions: {
         underlyingPrice: Number(request.body?.underlyingPrice || 0),
         model: 'vertical-spread',
-        dataSource: 'mock',
+        dataSource: hasBrokerQuotes ? 'alpaca' : 'mock',
       },
     });
   } catch (error) {
