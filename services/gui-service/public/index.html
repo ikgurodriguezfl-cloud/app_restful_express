@@ -455,18 +455,32 @@ document.getElementById('btnFetchQuotes').addEventListener('click', async () => 
 
     calls.sort((a, b) => a.strike - b.strike);
     const spot = (calls[0].bid + calls[0].ask) / 2;
-    // Encontrar strikes cercanos al spot
-    const midIdx = calls.findIndex(c => c.strike > spot);
-    const lower = calls[midIdx - 1] || calls[0];
-    const higher = calls[midIdx] || calls[calls.length - 1];
 
-    document.getElementById('strikeLong').value = lower.strike;
-    document.getElementById('strikeShort').value = higher.strike;
-    document.getElementById('priceLong').value = lower.ask;
-    document.getElementById('priceShort').value = higher.bid;
+    // Buscar un par de strikes consecutivos que forme un spread de débito válido:
+    //   débito = ask_lower - bid_higher  debe ser > 0 y < width
+    let selected = null;
+    for (let i = 0; i < calls.length - 1; i++) {
+      const lower = calls[i];
+      const higher = calls[i + 1];
+      const width = higher.strike - lower.strike;
+      const debit = lower.ask - higher.bid;
+      if (width > 0 && debit > 0 && debit < width) {
+        selected = { lower, higher, width, debit };
+        break;
+      }
+    }
 
-    log(`Cotizaciones obtenidas de Alpaca: Long strike=$${lower.strike} ask=$${lower.ask}, Short strike=$${higher.strike} bid=$${higher.bid}`);
-    showAlert(`Cotizaciones obtenidas de Alpaca (spot: $${spot.toFixed(2)}).`, 'info');
+    if (!selected) {
+      throw new Error('No se encontró un par de strikes que forme un spread de débito válido para este símbolo y vencimiento. Los precios de opciones están muy alejados entre sí. Intenta con otro vencimiento o ingresa los precios manualmente.');
+    }
+
+    document.getElementById('strikeLong').value = selected.lower.strike;
+    document.getElementById('strikeShort').value = selected.higher.strike;
+    document.getElementById('priceLong').value = selected.lower.ask;
+    document.getElementById('priceShort').value = selected.higher.bid;
+
+    log(`Cotizaciones obtenidas de Alpaca: Long strike=$${selected.lower.strike} ask=$${selected.lower.ask}, Short strike=$${selected.higher.strike} bid=$${selected.higher.bid} (width=$${selected.width}, débito=$${selected.debit.toFixed(2)})`);
+    showAlert(`Cotizaciones obtenidas de Alpaca (spot: $${spot.toFixed(2)}, width: $${selected.width}, débito: $${selected.debit.toFixed(2)}).`, 'info');
   } catch (e) {
     showAlert(e.message, 'error');
     log('Error fetch quotes: ' + e.message);
@@ -530,6 +544,42 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
   } else if (selectedStrategy === 'BEAR_PUT_SPREAD') {
     body.legs[0].side = 'buy';
     body.legs[1].side = 'sell';
+  }
+
+  // ── Validación previa de débito/crédito neto vs width ──
+  const width = Math.abs(strikeShort - strikeLong);
+  const netPerShare = Number(priceShort) - Number(priceLong); // venta - compra
+
+  if (selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BEAR_PUT_SPREAD') {
+    // Spreads de DÉBITO: compra strike bajo, venta strike alto → debes pagar neto
+    const debit = Number(priceLong) - Number(priceShort); // compra - venta
+    if (debit <= 0) {
+      showAlert(`Débito neto inválido: el precio de compra ($${priceLong}) debe ser mayor que el de venta ($${priceShort}).`, 'error');
+      btn.disabled = false;
+      btn.textContent = '🧮 Evaluar estrategia';
+      return;
+    }
+    if (debit >= width) {
+      showAlert(`Débito neto ($${debit.toFixed(2)}) debe ser menor que el ancho del spread ($${width}).`, 'error');
+      btn.disabled = false;
+      btn.textContent = '🧮 Evaluar estrategia';
+      return;
+    }
+  } else {
+    // Spreads de CRÉDITO: venta strike bajo, compra strike alto → debes recibir neto
+    const credit = Number(priceShort) - Number(priceLong); // venta - compra
+    if (credit <= 0) {
+      showAlert(`Crédito neto inválido: el precio de venta ($${priceShort}) debe ser mayor que el de compra ($${priceLong}).`, 'error');
+      btn.disabled = false;
+      btn.textContent = '🧮 Evaluar estrategia';
+      return;
+    }
+    if (credit >= width) {
+      showAlert(`Crédito neto ($${credit.toFixed(2)}) debe ser menor que el ancho del spread ($${width}).`, 'error');
+      btn.disabled = false;
+      btn.textContent = '🧮 Evaluar estrategia';
+      return;
+    }
   }
 
   const btn = document.getElementById('btnEvaluate');
