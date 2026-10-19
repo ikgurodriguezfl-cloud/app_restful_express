@@ -1,2 +1,2 @@
-◇ injected env (6) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (6) from .env // tip: ⌘ suppress logs { quiet: true }
 quant-service listening on port 3002

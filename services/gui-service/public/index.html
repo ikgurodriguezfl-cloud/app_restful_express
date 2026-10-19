@@ -124,6 +124,59 @@
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .full { grid-column: 1 / -1; }
 
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-left: -1.25rem;
+      margin-right: -1.25rem;
+      padding: 0 1.25rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--panel-hover); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: rgba(56,189,248,0.1);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Strategy tab (existing) ── */
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+    .strategy-chip {
+      padding: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .strategy-chip:hover { background: var(--panel-hover); }
+    .strategy-chip.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
     .btn {
       padding: 0.7rem 1.2rem;
       border: none;
@@ -148,30 +201,6 @@
     .btn-secondary:hover { background: #475569; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-block { width: 100%; justify-content: center; }
-
-    .strategy-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 0.75rem;
-    }
-    .strategy-chip {
-      padding: 0.6rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      text-align: center;
-      font-size: 0.85rem;
-      cursor: pointer;
-      user-select: none;
-    }
-    .strategy-chip:hover { background: var(--panel-hover); }
-    .strategy-chip.active {
-      background: var(--accent);
-      color: #000;
-      border-color: var(--accent);
-      font-weight: 700;
-    }
-
-    main { display: flex; flex-direction: column; gap: 1.5rem; }
 
     .results-grid {
       display: grid;
@@ -241,15 +270,15 @@
     }
     .alert-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); }
     .alert-info { background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: var(--accent); }
+
+    .small-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
   </style>
 </head>
 <body>
 
 <header>
   <h1><span>▶</span> Trading Dashboard</h1>
-  <div class="services-status" id="servicesStatus">
-    <!-- chips inyectados por JS -->
-  </div>
+  <div class="services-status" id="servicesStatus"></div>
 </header>
 
 <div class="container">
@@ -266,98 +295,290 @@
   </aside>
 
   <main>
-    <!-- Alertas -->
     <div id="alertContainer"></div>
 
-    <!-- Selección de estrategia -->
-    <div class="card">
-      <h2>Configurar Estrategia</h2>
-
-      <div class="strategy-grid" id="strategyGrid">
-        <div class="strategy-chip active" data-strategy="BULL_CALL_SPREAD">Bull Call</div>
-        <div class="strategy-chip" data-strategy="BEAR_CALL_SPREAD">Bear Call</div>
-        <div class="strategy-chip" data-strategy="BULL_PUT_SPREAD">Bull Put</div>
-        <div class="strategy-chip" data-strategy="BEAR_PUT_SPREAD">Bear Put</div>
-      </div>
-
-      <form id="strategyForm" class="row">
-        <div class="full">
-          <label>Etiqueta / Label</label>
-          <input type="text" id="label" placeholder="Ej: Mi Bull Call AAPL" required />
-        </div>
-        <div>
-          <label>Símbolo (Ticker)</label>
-          <input type="text" id="symbol" value="AAPL" required />
-        </div>
-        <div>
-          <label>Vencimiento (YYYY-MM-DD)</label>
-          <input type="text" id="expiration" value="2026-12-18" required />
-        </div>
-        <div class="full">
-          <label>Strike Compra (Long) — precio unitario</label>
-          <input type="number" id="strikeLong" step="0.01" required />
-        </div>
-        <div class="full">
-          <label>Strike Venta (Short) — precio unitario</label>
-          <input type="number" id="strikeShort" step="0.01" required />
-        </div>
-        <div class="full">
-          <label>Precio Compra (Ask) — leave blank to fetch from Alpaca</label>
-          <input type="number" id="priceLong" step="0.01" placeholder="auto" />
-        </div>
-        <div class="full">
-          <label>Precio Venta (Bid) — leave blank to fetch from Alpaca</label>
-          <input type="number" id="priceShort" step="0.01" placeholder="auto" />
-        </div>
-        <div>
-          <label>Cantidad de contratos</label>
-          <input type="number" id="quantity" value="1" min="1" required />
-        </div>
-        <div>
-          <label>Multiplicador</label>
-          <input type="number" id="multiplier" value="100" min="1" required />
-        </div>
-      </form>
-
-      <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
-        <button type="button" class="btn btn-warning" id="btnFetchQuotes">📊 Obtener cotizaciones (Alpaca)</button>
-        <button type="button" class="btn btn-primary btn-block" id="btnEvaluate">🧮 Evaluar estrategia</button>
-      </div>
+    <!-- ── Pestañas ── -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-btn-strategy" onclick="showTab('strategy')">📈 Estrategia</button>
+      <button class="tab-btn" id="tab-btn-prices" onclick="showTab('prices')">💰 Precios Black-Scholes</button>
+      <button class="tab-btn" id="tab-btn-greeks" onclick="showTab('greeks')">⚖️ Griegas</button>
+      <button class="tab-btn" id="tab-btn-iv" onclick="showTab('iv')">📊 Volatilidad Implícita</button>
     </div>
 
-    <!-- Resultados -->
-    <div class="card" id="resultsCard" style="display:none;">
-      <h2>Resultado</h2>
-      <div class="results-grid" id="resultsGrid"></div>
-      <div style="margin-top:1rem;">
+    <!-- ── Estrategia ── -->
+    <div id="tab-strategy" class="tab-content active">
+      <div class="card">
+        <h2>Configurar Estrategia</h2>
+
+        <div class="strategy-grid" id="strategyGrid">
+          <div class="strategy-chip active" data-strategy="BULL_CALL_SPREAD">Bull Call</div>
+          <div class="strategy-chip" data-strategy="BEAR_CALL_SPREAD">Bear Call</div>
+          <div class="strategy-chip" data-strategy="BULL_PUT_SPREAD">Bull Put</div>
+          <div class="strategy-chip" data-strategy="BEAR_PUT_SPREAD">Bear Put</div>
+        </div>
+
+        <form id="strategyForm" class="row">
+          <div class="full">
+            <label>Etiqueta / Label</label>
+            <input type="text" id="label" placeholder="Ej: Mi Bull Call AAPL" required />
+          </div>
+          <div>
+            <label>Símbolo (Ticker)</label>
+            <input type="text" id="symbol" value="AAPL" required />
+          </div>
+          <div>
+            <label>Vencimiento (YYYY-MM-DD)</label>
+            <input type="text" id="expiration" value="2026-12-18" required />
+          </div>
+          <div class="full">
+            <label>Strike Compra (Long)</label>
+            <input type="number" id="strikeLong" step="0.01" required />
+          </div>
+          <div class="full">
+            <label>Strike Venta (Short)</label>
+            <input type="number" id="strikeShort" step="0.01" required />
+          </div>
+          <div class="full">
+            <label>Precio Compra (Ask) — leave blank to fetch from Alpaca</label>
+            <input type="number" id="priceLong" step="0.01" placeholder="auto" />
+          </div>
+          <div class="full">
+            <label>Precio Venta (Bid) — leave blank to fetch from Alpaca</label>
+            <input type="number" id="priceShort" step="0.01" placeholder="auto" />
+          </div>
+          <div>
+            <label>Cantidad de contratos</label>
+            <input type="number" id="quantity" value="1" min="1" required />
+          </div>
+          <div>
+            <label>Multiplicador</label>
+            <input type="number" id="multiplier" value="100" min="1" required />
+          </div>
+        </form>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+          <button type="button" class="btn btn-warning" id="btnFetchQuotes">📊 Obtener cotizaciones (Alpaca)</button>
+          <button type="button" class="btn btn-primary btn-block" id="btnEvaluate">🧮 Evaluar estrategia</button>
+        </div>
+      </div>
+
+      <div class="card" id="resultsCard" style="display:none;">
+        <h2>Resultado</h2>
+        <div class="results-grid" id="resultsGrid"></div>
+        <div style="margin-top:1rem;">
+          <table>
+            <thead>
+              <tr><th>Pata</th><th>Acción</th><th>Tipo</th><th>Strike</th><th>Precio</th></tr>
+            </thead>
+            <tbody id="legsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Historial de Estrategias</h2>
         <table>
           <thead>
-            <tr><th>Pata</th><th>Acción</th><th>Tipo</th><th>Strike</th><th>Precio</th></tr>
+            <tr><th>Etiqueta</th><th>Tipo</th><th>Símbolo</th><th>Débito/Crédito</th><th>Máx. Pérdida</th><th>Máx. Ganancia</th><th>Break Even</th></tr>
           </thead>
-          <tbody id="legsTable"></tbody>
+          <tbody id="historyTable"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Historial -->
-    <div class="card">
-      <h2>Historial de Estrategias</h2>
-      <table>
-        <thead>
-          <tr><th>Etiqueta</th><th>Tipo</th><th>Símbolo</th><th>Débito/Crédito</th><th>Máx. Pérdida</th><th>Máx. Ganancia</th><th>Break Even</th></tr>
-        </thead>
-        <tbody id="historyTable"></tbody>
-      </table>
+    <!-- ── Precios Black-Scholes ── -->
+    <div id="tab-prices" class="tab-content">
+      <div class="card">
+        <h2>Precio de Opción — Black-Scholes</h2>
+
+        <form id="pricesForm" class="row">
+          <div>
+            <label>Símbolo</label>
+            <input type="text" id="bsSymbol" value="AAPL" required />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="bsOptionType">
+              <option value="call">Call</option>
+              <option value="put">Put</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Precio Spot del subyacente (S)</label>
+            <input type="number" id="bsSpot" step="0.01" value="343.87" required />
+          </div>
+          <div class="full">
+            <label>Strike (K)</label>
+            <input type="number" id="bsStrike" step="0.01" value="340" required />
+          </div>
+          <div>
+            <label>Vencimiento (YYYY-MM-DD)</label>
+            <input type="text" id="bsExpiration" value="2026-12-18" required />
+          </div>
+          <div>
+            <label>Tasa libre de riesgo (r, anual)</label>
+            <input type="number" id="bsRate" step="0.0001" value="0.05" required />
+          </div>
+          <div>
+            <label>Rendimiento de dividendos (q, anual)</label>
+            <input type="number" id="bsDividend" step="0.0001" value="0" required />
+          </div>
+          <div class="full">
+            <label>Volatilidad implícita (σ, anual)</label>
+            <input type="number" id="bsVolatility" step="0.0001" value="0.25" required />
+          </div>
+        </form>
+
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcPrices">🧮 Calcular precio</button>
+
+        <div id="pricesResult" style="margin-top:1.5rem; display:none;">
+          <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
+          <div class="results-grid" id="pricesGrid"></div>
+          <div class="small-note" id="pricesNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Griegas ── -->
+    <div id="tab-greeks" class="tab-content">
+      <div class="card">
+        <h2>Griegas de Opción — Black-Scholes</h2>
+
+        <form id="greeksForm" class="row">
+          <div>
+            <label>Símbolo</label>
+            <input type="text" id="grSymbol" value="AAPL" required />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="grOptionType">
+              <option value="call">Call</option>
+              <option value="put">Put</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Precio Spot del subyacente (S)</label>
+            <input type="number" id="grSpot" step="0.01" value="343.87" required />
+          </div>
+          <div class="full">
+            <label>Strike (K)</label>
+            <input type="number" id="grStrike" step="0.01" value="340" required />
+          </div>
+          <div>
+            <label>Vencimiento (YYYY-MM-DD)</label>
+            <input type="text" id="grExpiration" value="2026-12-18" required />
+          </div>
+          <div>
+            <label>Tasa libre de riesgo (r, anual)</label>
+            <input type="number" id="grRate" step="0.0001" value="0.05" required />
+          </div>
+          <div>
+            <label>Rendimiento de dividendos (q, anual)</label>
+            <input type="number" id="grDividend" step="0.0001" value="0" required />
+          </div>
+          <div class="full">
+            <label>Volatilidad implícita (σ, anual)</label>
+            <input type="number" id="grVolatility" step="0.0001" value="0.25" required />
+          </div>
+        </form>
+
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcGreeks">🧮 Calcular griegas</button>
+
+        <div id="greeksResult" style="margin-top:1.5rem; display:none;">
+          <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
+          <table>
+            <thead>
+              <tr><th>Griega</th><th>Valor</th><th>Interpretación</th></tr>
+            </thead>
+            <tbody id="greeksTable"></tbody>
+          </table>
+          <div class="small-note" id="greeksNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Volatilidad Implícita ── -->
+    <div id="tab-iv" class="tab-content">
+      <div class="card">
+        <h2>Volatilidad Implícita — Newton-Raphson</h2>
+
+        <form id="ivForm" class="row">
+          <div>
+            <label>Símbolo</label>
+            <input type="text" id="ivSymbol" value="AAPL" required />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="ivOptionType">
+              <option value="call">Call</option>
+              <option value="put">Put</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Precio Spot del subyacente (S)</label>
+            <input type="number" id="ivSpot" step="0.01" value="343.87" required />
+          </div>
+          <div class="full">
+            <label>Strike (K)</label>
+            <input type="number" id="ivStrike" step="0.01" value="340" required />
+          </div>
+          <div>
+            <label>Vencimiento (YYYY-MM-DD)</label>
+            <input type="text" id="ivExpiration" value="2026-12-18" required />
+          </div>
+          <div>
+            <label>Tasa libre de riesgo (r, anual)</label>
+            <input type="number" id="ivRate" step="0.0001" value="0.05" required />
+          </div>
+          <div>
+            <label>Rendimiento de dividendos (q, anual)</label>
+            <input type="number" id="ivDividend" step="0.0001" value="0" required />
+          </div>
+          <div class="full">
+            <label>Precio de mercado de la opción</label>
+            <input type="number" id="ivMarketPrice" step="0.01" value="5.00" required />
+            <div class="small-note">Precio observado en el mercado para resolver σ.</div>
+          </div>
+          <div>
+            <label>Suposición inicial (σ inicial)</label>
+            <input type="number" id="ivInitialGuess" step="0.0001" value="0.2" required />
+            <div class="small-note">Valor inicial para el método de Newton-Raphson.</div>
+          </div>
+        </form>
+
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcIV">🧮 Calcular volatilidad implícita</button>
+
+        <div id="ivResult" style="margin-top:1.5rem; display:none;">
+          <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
+          <div class="results-grid" id="ivGrid"></div>
+          <table style="margin-top:1rem;">
+            <thead>
+              <tr><th>Campo</th><th>Valor</th></tr>
+            </thead>
+            <tbody id="ivTable"></tbody>
+          </table>
+          <div class="small-note" id="ivNote"></div>
+        </div>
+      </div>
     </div>
   </main>
 </div>
 
 <script>
 const API_BASE = '';
+const QUANT_SERVICE_URL = 'http://localhost:3002';
 let selectedStrategy = 'BULL_CALL_SPREAD';
 let history = JSON.parse(localStorage.getItem('td_history') || '[]');
 
-// ---- Servicios ----
+// ── Tabs ──
+function showTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-btn-' + tabName).classList.add('active');
+  document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+// ── Servicios ──
 async function refreshServices() {
   try {
     const res = await fetch(`${API_BASE}/api/services/status`);
@@ -421,7 +642,7 @@ function showAlert(msg, type = 'info') {
   setTimeout(() => div.remove(), 5000);
 }
 
-// ---- Selección de estrategia ----
+// ── Selección de estrategia ──
 document.querySelectorAll('.strategy-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     document.querySelectorAll('.strategy-chip').forEach(c => c.classList.remove('active'));
@@ -430,10 +651,7 @@ document.querySelectorAll('.strategy-chip').forEach(chip => {
   });
 });
 
-// URL directa a quant-service (evita el proxy roto del gateway)
-const QUANT_SERVICE_URL = 'http://localhost:3002';
-
-// ---- Fetch cotizaciones ----
+// ── Fetch cotizaciones ──
 document.getElementById('btnFetchQuotes').addEventListener('click', async () => {
   const symbol = document.getElementById('symbol').value.trim();
   const expiration = document.getElementById('expiration').value.trim();
@@ -445,7 +663,6 @@ document.getElementById('btnFetchQuotes').addEventListener('click', async () => 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Consultando Alpaca...';
   try {
-    // Llamada DIRECTA a quant-service (puerto 3002)
     const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/market-data/options-chains?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&limit=200`);
     if (!res.ok) throw new Error(`quant-service respondió ${res.status}: ${res.statusText}`);
     const data = await res.json();
@@ -456,8 +673,7 @@ document.getElementById('btnFetchQuotes').addEventListener('click', async () => 
     calls.sort((a, b) => a.strike - b.strike);
     const spot = (calls[0].bid + calls[0].ask) / 2;
 
-    // Buscar un par de strikes consecutivos que forme un spread de débito válido:
-    //   débito = ask_lower - bid_higher  debe ser > 0 y < width
+    // Buscar un par de strikes consecutivos que forme un spread de débito válido
     let selected = null;
     for (let i = 0; i < calls.length - 1; i++) {
       const lower = calls[i];
@@ -490,7 +706,7 @@ document.getElementById('btnFetchQuotes').addEventListener('click', async () => 
   }
 });
 
-// ---- Evaluar ----
+// ── Evaluar estrategia ──
 document.getElementById('btnEvaluate').addEventListener('click', async () => {
   const symbol = document.getElementById('symbol').value.trim().toUpperCase();
   const expiration = document.getElementById('expiration').value.trim();
@@ -501,7 +717,6 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
   const quantity = Number(document.getElementById('quantity').value || 1);
   const multiplier = Number(document.getElementById('multiplier').value || 100);
 
-  // Validaciones básicas
   if (!symbol || !expiration) {
     showAlert('Ingresa símbolo y vencimiento.', 'error');
     return;
@@ -537,7 +752,6 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
     ],
   };
 
-  // Normalizar lados según definición de spread
   if (selectedStrategy === 'BEAR_CALL_SPREAD') {
     body.legs[0].side = 'sell';
     body.legs[1].side = 'buy';
@@ -546,38 +760,26 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
     body.legs[1].side = 'sell';
   }
 
-  // ── Validación previa de débito/crédito neto vs width ──
+  // Validación previa de débito/crédito neto vs width
   const width = Math.abs(strikeShort - strikeLong);
-  const netPerShare = Number(priceShort) - Number(priceLong); // venta - compra
-
   if (selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BEAR_PUT_SPREAD') {
-    // Spreads de DÉBITO: compra strike bajo, venta strike alto → debes pagar neto
-    const debit = Number(priceLong) - Number(priceShort); // compra - venta
+    const debit = Number(priceLong) - Number(priceShort);
     if (debit <= 0) {
       showAlert(`Débito neto inválido: el precio de compra ($${priceLong}) debe ser mayor que el de venta ($${priceShort}).`, 'error');
-      btn.disabled = false;
-      btn.textContent = '🧮 Evaluar estrategia';
       return;
     }
     if (debit >= width) {
       showAlert(`Débito neto ($${debit.toFixed(2)}) debe ser menor que el ancho del spread ($${width}).`, 'error');
-      btn.disabled = false;
-      btn.textContent = '🧮 Evaluar estrategia';
       return;
     }
   } else {
-    // Spreads de CRÉDITO: venta strike bajo, compra strike alto → debes recibir neto
-    const credit = Number(priceShort) - Number(priceLong); // venta - compra
+    const credit = Number(priceShort) - Number(priceLong);
     if (credit <= 0) {
       showAlert(`Crédito neto inválido: el precio de venta ($${priceShort}) debe ser mayor que el de compra ($${priceLong}).`, 'error');
-      btn.disabled = false;
-      btn.textContent = '🧮 Evaluar estrategia';
       return;
     }
     if (credit >= width) {
       showAlert(`Crédito neto ($${credit.toFixed(2)}) debe ser menor que el ancho del spread ($${width}).`, 'error');
-      btn.disabled = false;
-      btn.textContent = '🧮 Evaluar estrategia';
       return;
     }
   }
@@ -587,7 +789,6 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
   btn.innerHTML = '<span class="spinner"></span> Evaluando...';
   try {
     let result;
-    // Intentar vía quant-service directo primero
     try {
       const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/strategies/evaluate`, {
         method: 'POST',
@@ -598,7 +799,6 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
       result = await res.json();
       result.source = 'quant-service';
     } catch (e) {
-      // Fallback a evaluación local en la GUI
       const res2 = await fetch(`${API_BASE}/api/evaluate/local`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -629,18 +829,18 @@ function renderResults(result, input) {
   const grid = document.getElementById('resultsGrid');
   grid.innerHTML = '';
 
-  const spreadType = input.strategyType.includes('CALL') ? 'call' : 'put';
   const isDebit = result.spreadCategory === 'debit';
+  const net = result.netDebitOrCredit ?? (isDebit ? -result.netDebit : result.netCredit);
 
   const metrics = [
     { label: 'Estrategia', value: input.strategyType, neutral: true },
     { label: 'Símbolo', value: input.symbol, neutral: true },
     { label: 'Vencimiento', value: input.expiration, neutral: true },
     { label: 'Categoría', value: result.spreadCategory.toUpperCase(), neutral: true },
-    { label: 'Débito/Crédito Neto', value: `$${result.netDebitOrCredit?.toFixed(2) ?? (isDebit ? result.netDebit : -result.netCredit).toFixed(2)}`, pos: !isDebit, neg: isDebit },
-    { label: 'Máx. Pérdida', value: `$${result.maxLoss?.toFixed(2) ?? result.maxRisk.toFixed(2)}`, neg: true },
-    { label: 'Máx. Ganancia', value: `$${result.maxProfit?.toFixed(2) ?? result.maxBenefit.toFixed(2)}`, pos: true },
-    { label: 'Break Even', value: `$${result.breakEven?.toFixed(2) ?? result.breakEvenPrice.toFixed(2)}`, neutral: true },
+    { label: 'Débito/Crédito Neto', value: `$${net.toFixed(2)}`, pos: net > 0, neg: net < 0 },
+    { label: 'Máx. Pérdida', value: `$${(result.maxLoss ?? result.maxRisk).toFixed(2)}`, neg: true },
+    { label: 'Máx. Ganancia', value: `$${(result.maxProfit ?? result.maxBenefit).toFixed(2)}`, pos: true },
+    { label: 'Break Even', value: `$${(result.breakEven ?? result.breakEvenPrice).toFixed(2)}`, neutral: true },
     { label: 'Risk/Reward', value: `1:${result.riskRewardRatio?.toFixed(2)}`, neutral: true },
   ];
 
@@ -699,7 +899,253 @@ function renderHistory() {
   });
 }
 
-// ---- Init ----
+// ── Black-Scholes Prices ──
+document.getElementById('btnCalcPrices').addEventListener('click', async () => {
+  const body = {
+    symbol: document.getElementById('bsSymbol').value.trim().toUpperCase(),
+    spot: Number(document.getElementById('bsSpot').value),
+    strike: Number(document.getElementById('bsStrike').value),
+    expiration: document.getElementById('bsExpiration').value.trim(),
+    rate: Number(document.getElementById('bsRate').value || 0),
+    dividendYield: Number(document.getElementById('bsDividend').value || 0),
+    volatility: Number(document.getElementById('bsVolatility').value),
+    optionType: document.getElementById('bsOptionType').value,
+  };
+
+  if (!body.symbol || !body.spot || !body.strike || !body.expiration || !body.volatility) {
+    showAlert('Completa todos los campos requeridos.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnCalcPrices');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Calculando...';
+  try {
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/quant/prices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`quant-service respondió ${res.status}`);
+    const data = await res.json();
+
+    const grid = document.getElementById('pricesGrid');
+    grid.innerHTML = '';
+    const metrics = [
+      { label: 'Modelo', value: data.model, neutral: true },
+      { label: 'Símbolo', value: data.symbol, neutral: true },
+      { label: 'Precio teórico', value: `$${data.price.toFixed(4)}`, neutral: true },
+      { label: 'Moneda', value: data.currency, neutral: true },
+      { label: 'Tiempo al vencimiento (años)', value: data.assumptions?.timeToMaturityYears?.toFixed(6) ?? 'N/A', neutral: true },
+      { label: 'Calculado en', value: data.calculatedAt, neutral: true },
+    ];
+    metrics.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'metric-card';
+      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+      grid.appendChild(el);
+    });
+
+    document.getElementById('pricesNote').textContent = `Asumciones: spot=$${body.spot}, strike=$${body.strike}, rate=$${body.rate}, dividendYield=$${body.dividendYield}, volatility=$${body.volatility}, optionType=$${body.optionType}`;
+    document.getElementById('pricesResult').style.display = 'block';
+    showAlert('Precio calculado con Black-Scholes.', 'info');
+  } catch (e) {
+    showAlert('Error calculando precio: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧮 Calcular precio';
+  }
+});
+
+// ── Greeks ──
+document.getElementById('btnCalcGreeks').addEventListener('click', async () => {
+  const body = {
+    symbol: document.getElementById('grSymbol').value.trim().toUpperCase(),
+    spot: Number(document.getElementById('grSpot').value),
+    strike: Number(document.getElementById('grStrike').value),
+    expiration: document.getElementById('grExpiration').value.trim(),
+    rate: Number(document.getElementById('grRate').value || 0),
+    dividendYield: Number(document.getElementById('grDividend').value || 0),
+    volatility: Number(document.getElementById('grVolatility').value),
+    optionType: document.getElementById('grOptionType').value,
+  };
+
+  if (!body.symbol || !body.spot || !body.strike || !body.expiration || !body.volatility) {
+    showAlert('Completa todos los campos requeridos.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnCalcGreeks');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Calculando...';
+  try {
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/quant/greeks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`quant-service respondió ${res.status}`);
+    const data = await res.json();
+
+    const tbody = document.getElementById('greeksTable');
+    tbody.innerHTML = '';
+    const greeks = data.greeks || {};
+    const rows = [
+      { label: 'Delta', value: greeks.delta?.toFixed(6), desc: 'Sensibilidad del precio al cambio en el spot' },
+      { label: 'Gamma', value: greeks.gamma?.toFixed(6), desc: 'Tasa de cambio del delta respecto al spot' },
+      { label: 'Theta', value: greeks.theta?.toFixed(6), desc: 'Pérdida de valor por el paso del tiempo (día)' },
+      { label: 'Vega', value: greeks.vega?.toFixed(6), desc: 'Sensibilidad al cambio en la volatilidad' },
+      { label: 'Rho', value: greeks.rho?.toFixed(6), desc: 'Sensibilidad al cambio en la tasa de interés' },
+    ];
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.label}</td><td>${r.value}</td><td>${r.desc}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('greeksNote').textContent = `Asumciones: spot=$${body.spot}, strike=$${body.strike}, rate=$${body.rate}, dividendYield=$${body.dividendYield}, volatility=$${body.volatility}, optionType=$${body.optionType}`;
+    document.getElementById('greeksResult').style.display = 'block';
+    showAlert('Griegas calculadas con Black-Scholes.', 'info');
+  } catch (e) {
+    showAlert('Error calculando griegas: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧮 Calcular griegas';
+  }
+});
+
+// ── Implied Volatility ──
+document.getElementById('btnCalcIV').addEventListener('click', async () => {
+  const body = {
+    symbol: document.getElementById('ivSymbol').value.trim().toUpperCase(),
+    spot: Number(document.getElementById('ivSpot').value),
+    strike: Number(document.getElementById('ivStrike').value),
+    expiration: document.getElementById('ivExpiration').value.trim(),
+    rate: Number(document.getElementById('ivRate').value || 0),
+    dividendYield: Number(document.getElementById('ivDividend').value || 0),
+    optionType: document.getElementById('ivOptionType').value,
+    marketPrice: Number(document.getElementById('ivMarketPrice').value),
+    initialGuess: Number(document.getElementById('ivInitialGuess').value || 0.2),
+    tolerance: 1e-8,
+    maxIterations: 200,
+  };
+
+  if (!body.symbol || !body.spot || !body.strike || !body.expiration || !body.marketPrice) {
+    showAlert('Completa todos los campos requeridos.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnCalcIV');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Calculando IV...';
+  try {
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/quant/implied-volatility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    // Si no converge (422), igual mostramos lo que el servidor devolvió y advertimos
+    if (res.status === 422) {
+      const grid = document.getElementById('ivGrid');
+      grid.innerHTML = '';
+      const metrics = [
+        { label: 'Volatilidad Implícita (σ)', value: (data.impliedVolatility * 100).toFixed(4) + '%', neutral: true },
+        { label: 'Método', value: data.method, neutral: true },
+        { label: 'Convergió', value: 'No', neg: true },
+        { label: 'Iteraciones', value: data.iterations, neutral: true },
+        { label: 'Precio del modelo', value: `$${data.modelPrice?.toFixed(6)}`, neutral: true },
+        { label: 'Error de precio', value: data.pricingError?.toFixed(8), neutral: true },
+      ];
+      metrics.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'metric-card';
+        el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+        grid.appendChild(el);
+      });
+
+      const tbody = document.getElementById('ivTable');
+      tbody.innerHTML = '';
+      const rows = [
+        { label: 'Símbolo', value: body.symbol },
+        { label: 'Tipo', value: body.optionType },
+        { label: 'Spot', value: `$${body.spot}` },
+        { label: 'Strike', value: `$${body.strike}` },
+        { label: 'Vencimiento', value: body.expiration },
+        { label: 'Tasa libre (r)', value: body.rate.toString() },
+        { label: 'Dividendos (q)', value: body.dividendYield.toString() },
+        { label: 'Precio de mercado', value: `$${body.marketPrice}` },
+        { label: 'Suposición inicial (σ)', value: body.initialGuess.toString() },
+        { label: 'Calculado en', value: data.calculatedAt },
+      ];
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.label}</td><td>${r.value}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('ivNote').textContent = `IV NO convergió. El precio de mercado ($${body.marketPrice}) no es alcanzable con los parámetros dados. Intenta con un precio de mercado más cercano a $${data.modelPrice?.toFixed(2)} o ajusta el vencimiento/strike.`;
+      document.getElementById('ivResult').style.display = 'block';
+      showAlert('IV no convergió (422). Revisa los detalles arriba.', 'warning');
+      btn.disabled = false;
+      btn.textContent = '🧮 Calcular volatilidad implícita';
+      return;
+    }
+
+    if (!res.ok) throw new Error(`quant-service respondió ${res.status}`);
+
+    const grid = document.getElementById('ivGrid');
+    grid.innerHTML = '';
+    const metrics = [
+      { label: 'Volatilidad Implícita (σ)', value: (data.impliedVolatility * 100).toFixed(4) + '%', neutral: true },
+      { label: 'Método', value: data.method, neutral: true },
+      { label: 'Convergió', value: data.converged ? 'Sí' : 'No', neutral: true },
+      { label: 'Iteraciones', value: data.iterations, neutral: true },
+      { label: 'Precio del modelo', value: `$${data.modelPrice?.toFixed(6)}`, neutral: true },
+      { label: 'Error de precio', value: data.pricingError?.toFixed(8), neutral: true },
+    ];
+    metrics.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'metric-card';
+      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+      grid.appendChild(el);
+    });
+
+    const tbody = document.getElementById('ivTable');
+    tbody.innerHTML = '';
+    const rows = [
+      { label: 'Símbolo', value: body.symbol },
+      { label: 'Tipo', value: body.optionType },
+      { label: 'Spot', value: `$${body.spot}` },
+      { label: 'Strike', value: `$${body.strike}` },
+      { label: 'Vencimiento', value: body.expiration },
+      { label: 'Tasa libre (r)', value: body.rate.toString() },
+      { label: 'Dividendos (q)', value: body.dividendYield.toString() },
+      { label: 'Precio de mercado', value: `$${body.marketPrice}` },
+      { label: 'Suposición inicial (σ)', value: body.initialGuess.toString() },
+      { label: 'Calculado en', value: data.calculatedAt },
+    ];
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.label}</td><td>${r.value}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('ivNote').textContent = `Método: Newton-Raphson con tolerancia 1e-8 y máximo 200 iteraciones.`;
+    document.getElementById('ivResult').style.display = 'block';
+    showAlert('Volatilidad implícita calculada.', 'info');
+  } catch (e) {
+    showAlert('Error calculando IV: ' + e.message, 'error');
+  } finally {
+    if (res.status !== 422) {
+      btn.disabled = false;
+      btn.textContent = '🧮 Calcular volatilidad implícita';
+    }
+  }
+});
+
+// ── Init ──
 refreshServices();
 setInterval(refreshServices, 10000);
 renderHistory();
