@@ -1,0 +1,21 @@
+'use strict';
+const fail = (message, status = 400) => { const error = new Error(message); error.status = status; throw error; };
+const object = value => { if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Se requiere un objeto JSON.'); return value; };
+const fields = (value, allowed, required = []) => {
+  object(value);
+  if (!Object.keys(value).length) fail('No se enviaron campos.');
+  const extra = Object.keys(value).filter(key => !allowed.includes(key));
+  if (extra.length) fail(`Campos no permitidos: ${extra.join(', ')}.`);
+  const missing = required.filter(key => value[key] === undefined || value[key] === null);
+  if (missing.length) fail(`Campos obligatorios: ${missing.join(', ')}.`);
+  return value;
+};
+const uuid = value => { if (typeof value !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)) fail('Se requiere un UUID válido.'); return value; };
+const ids = value => { if (!Array.isArray(value) || !value.length || value.length > 100) fail('Se requieren entre 1 y 100 IDs.'); value.forEach(uuid); if (new Set(value).size !== value.length) fail('Los IDs no deben repetirse.'); return value; };
+const date = value => { if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0,10) !== value) fail('Fecha inválida; usa YYYY-MM-DD.'); return value; };
+const number = (value, name, min = 0) => { if (typeof value !== 'number' || !Number.isFinite(value) || value < min) fail(`${name} debe ser un número mayor o igual a ${min}.`); return value; };
+const spreadFields = ['strategyType','underlyingTicker','currentStockPrice','expirationDate','quantity','multiplier','status','notes'];
+const spreadRequired = ['strategyType','underlyingTicker','currentStockPrice','expirationDate','quantity','multiplier','status'];
+const legFields = ['contractSymbol','optionType','action','strike','expirationDate','premium','bid','ask','impliedVolatility','delta','gamma','theta','vega'];
+const legRequired = ['optionType','action','strike','expirationDate','premium'];
+module.exports = { fail, object, fields, ids, uuid, date, number, spreadId: uuid, legId: uuid, spreadFields, spreadRequired, legFields, legRequired };

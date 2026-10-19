@@ -364,6 +364,13 @@
 
       <div class="card" id="resultsCard" style="display:none;">
         <h2>Resultado</h2>
+        <div class="row" style="margin-bottom:1rem;">
+          <div><label>Precio del subyacente para guardar</label><input id="saveSpot" type="number" min="0.01" step="0.01" placeholder="Ej. 190" /></div>
+          <div><label>Correo de tu cuenta de Supabase</label><input id="saveEmail" type="email" autocomplete="username" /></div>
+          <div><label>Contraseña de tu cuenta de Supabase</label><input id="savePassword" type="password" autocomplete="current-password" /></div>
+          <div><button type="button" class="btn btn-primary" id="btnSaveSpread">Guardar en Supabase</button></div>
+          <p id="saveStatus" role="status"></p>
+        </div>
         <div class="results-grid" id="resultsGrid"></div>
         <div style="margin-top:1rem;">
           <table>
@@ -376,7 +383,7 @@
       </div>
 
       <div class="card">
-        <h2>Historial de Estrategias</h2>
+        <h2>Historial local de Estrategias</h2>
         <table>
           <thead>
             <tr><th>Etiqueta</th><th>Tipo</th><th>Símbolo</th><th>Débito/Crédito</th><th>Máx. Pérdida</th><th>Máx. Ganancia</th><th>Break Even</th></tr>
@@ -568,6 +575,10 @@
 const API_BASE = '';
 const QUANT_SERVICE_URL = 'http://localhost:3002';
 let selectedStrategy = 'BULL_CALL_SPREAD';
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+let lastEvaluatedInput = null;
+let savedSpreadId = null;
+let saveAccessToken = null;
 let history = JSON.parse(localStorage.getItem('td_history') || '[]');
 
 // ── Tabs ──
@@ -739,26 +750,18 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
     legs: [
       {
         type: selectedStrategy.includes('CALL') ? 'call' : 'put',
-        side: selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BULL_PUT_SPREAD' ? 'buy' : 'sell',
+        side: 'buy',
         strike: strikeLong,
         price: Number(priceLong),
       },
       {
         type: selectedStrategy.includes('CALL') ? 'call' : 'put',
-        side: selectedStrategy === 'BULL_CALL_SPREAD' || selectedStrategy === 'BULL_PUT_SPREAD' ? 'sell' : 'buy',
+        side: 'sell',
         strike: strikeShort,
         price: Number(priceShort),
       },
     ],
   };
-
-  if (selectedStrategy === 'BEAR_CALL_SPREAD') {
-    body.legs[0].side = 'sell';
-    body.legs[1].side = 'buy';
-  } else if (selectedStrategy === 'BEAR_PUT_SPREAD') {
-    body.legs[0].side = 'buy';
-    body.legs[1].side = 'sell';
-  }
 
   // Validación previa de débito/crédito neto vs width
   const width = Math.abs(strikeShort - strikeLong);
@@ -811,6 +814,10 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
       result = await res2.json();
     }
 
+    lastEvaluatedInput = structuredClone(body);
+    savedSpreadId = null;
+    document.getElementById('btnSaveSpread').disabled = false;
+    document.getElementById('saveStatus').textContent = 'Evaluado; todavía no guardado en Supabase.';
     renderResults(result, body);
     addToHistory(body, result);
     showAlert('Estrategia evaluada correctamente.', 'info');
@@ -820,6 +827,40 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
   } finally {
     btn.disabled = false;
     btn.textContent = '🧮 Evaluar estrategia';
+  }
+});
+
+document.getElementById('btnSaveSpread').addEventListener('click', async () => {
+  const status = document.getElementById('saveStatus');
+  const btn = document.getElementById('btnSaveSpread');
+  if (!lastEvaluatedInput) return;
+  btn.disabled = true;
+  try {
+    if (!saveAccessToken) {
+      const response = await fetch('/api/supabase/session', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('saveEmail').value.trim(),password:document.getElementById('savePassword').value})});
+      document.getElementById('savePassword').value = '';
+      const session = await response.json();
+      if (!response.ok) throw new Error(session.message);
+      saveAccessToken = session.accessToken;
+    }
+    const call = async (path,body) => {
+      const response = await fetch('/api/v1/spreads'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+saveAccessToken},body:JSON.stringify(body)});
+      const data = await response.json();
+      if (!response.ok) { if(response.status===401) saveAccessToken=null; if(data.spreadId) { status.textContent='Revisa el spread '+data.spreadId+' antes de reintentar.'; } throw new Error((data.spreadId?'Spread '+data.spreadId+'. ':'')+data.message); }
+      return data;
+    };
+    if (!savedSpreadId) {
+      const spot = Number(document.getElementById('saveSpot').value);
+      if (!Number.isFinite(spot) || spot <= 0) throw new Error('Ingresa el precio del subyacente.');
+      const input = lastEvaluatedInput;
+      const spread = await call('',{strategyType:input.strategyType,underlyingTicker:input.symbol,currentStockPrice:spot,expirationDate:input.expiration,quantity:input.quantity,multiplier:input.multiplier,status:'active',notes:document.getElementById('label').value.trim() || null,legs:input.legs.map(leg=>({optionType:leg.type,action:leg.side,strike:leg.strike,premium:leg.price,expirationDate:input.expiration,contractSymbol:input.symbol+input.expiration.slice(2).replaceAll('-','')+leg.type[0].toUpperCase()+String(Math.round(leg.strike*1000)).padStart(8,'0')}))});
+      savedSpreadId=spread.id;
+    }
+    await call('/'+savedSpreadId+'/evaluations',{});
+    status.textContent = 'Spread y evaluación guardados en Supabase. ID: '+savedSpreadId;
+  } catch(error) {
+    status.textContent = (savedSpreadId ? 'Spread ID '+savedSpreadId+'. ' : '')+error.message;
+    btn.disabled = false;
   }
 });
 
@@ -847,7 +888,7 @@ function renderResults(result, input) {
   metrics.forEach(m => {
     const el = document.createElement('div');
     el.className = 'metric-card';
-    el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+    el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${escapeHtml(m.value)}</div>`;
     grid.appendChild(el);
   });
 
@@ -887,9 +928,9 @@ function renderHistory() {
     const tr = document.createElement('tr');
     const isDebit = h.net < 0;
     tr.innerHTML = `
-      <td>${h.label}</td>
-      <td>${h.type}</td>
-      <td>${h.symbol}</td>
+      <td>${escapeHtml(h.label)}</td>
+      <td>${escapeHtml(h.type)}</td>
+      <td>${escapeHtml(h.symbol)}</td>
       <td><span class="badge ${isDebit ? 'badge-debit' : 'badge-credit'}">${isDebit ? 'Debit' : 'Credit'} $${Math.abs(h.net).toFixed(2)}</span></td>
       <td>$${h.maxLoss.toFixed(2)}</td>
       <td>$${h.maxProfit.toFixed(2)}</td>
@@ -942,7 +983,7 @@ document.getElementById('btnCalcPrices').addEventListener('click', async () => {
     metrics.forEach(m => {
       const el = document.createElement('div');
       el.className = 'metric-card';
-      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${escapeHtml(m.value)}</div>`;
       grid.appendChild(el);
     });
 
@@ -1061,7 +1102,7 @@ document.getElementById('btnCalcIV').addEventListener('click', async () => {
       metrics.forEach(m => {
         const el = document.createElement('div');
         el.className = 'metric-card';
-        el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+        el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${escapeHtml(m.value)}</div>`;
         grid.appendChild(el);
       });
 
@@ -1108,7 +1149,7 @@ document.getElementById('btnCalcIV').addEventListener('click', async () => {
     metrics.forEach(m => {
       const el = document.createElement('div');
       el.className = 'metric-card';
-      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${m.value}</div>`;
+      el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${escapeHtml(m.value)}</div>`;
       grid.appendChild(el);
     });
 

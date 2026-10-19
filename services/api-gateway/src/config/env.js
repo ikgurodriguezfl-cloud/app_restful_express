@@ -13,4 +13,5 @@ module.exports = {
   port,
   catalogServiceUrl,
   quantServiceUrl,
+  spreadServiceUrl: process.env.SPREAD_SERVICE_URL || 'http://localhost:3004',
 };

@@ -17,10 +17,13 @@
     "start:strategy": "npm --workspace services/strategy-service start",
     "test:strategy": "npm --workspace services/strategy-service test",
     "dev:gui": "npm --workspace services/gui-service run dev",
-    "start:gui": "npm --workspace services/gui-service start"
+    "start:gui": "npm --workspace services/gui-service start",
+    "start:spread": "npm --workspace services/spread-service start",
+    "dev:spread": "npm --workspace services/spread-service run dev",
+    "test:spread": "npm --workspace services/spread-service test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.3"
+    "@supabase/supabase-js": "2.117.3"
   }
 }

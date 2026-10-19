@@ -4,14 +4,36 @@ const { spawn } = require('child_process');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
 
 const app = express();
 const PORT = Number(process.env.GUI_PORT || 3005);
 
 // Middlewares
+app.use(createProxyMiddleware({
+  target: process.env.GATEWAY_SERVICE_URL || 'http://localhost:3000',
+  changeOrigin: true,
+  pathFilter: path => path === '/api/v1/spreads' || path.startsWith('/api/v1/spreads/'),
+  on: { error: (_error, _req, res) => {
+    if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'No se pudo contactar al Gateway.' }));
+  } },
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// User session is returned to the browser, never saved to disk or logged.
+app.post('/api/supabase/session', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const { email, password } = req.body || {};
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) return res.status(400).json({ message: 'Ingresa correo y contraseña de Supabase.' });
+  try {
+    const db = require('../../spread-service/src/db').createDatabase();
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error || !data.session) return res.status(401).json({ message: 'No se pudo iniciar sesión en Supabase.' });
+    res.json({ accessToken: data.session.access_token, expiresAt: data.session.expires_at });
+  } catch { res.status(503).json({ message: 'No se pudo conectar con Supabase.' }); }
+});
 
 // ---- Configuración de servicios disponibles ----
 const SERVICES = {
@@ -42,7 +64,7 @@ const SERVICES = {
   },
   'spread-service': {
     name: 'Spread Service',
-    port: Number(process.env.PORT || 3004),
+    port: Number(process.env.SPREAD_PORT || 3004),
     cwd: path.resolve(__dirname, '../../spread-service'),
     script: 'src/server.js',
   },
@@ -83,9 +105,9 @@ app.post('/api/services/:name/start', (req, res) => {
 
   console.log(`🚀 Iniciando ${svc.name} en ${svc.cwd}...`);
 
-  const proc = spawn('npm', ['run', 'dev'], {
+  const proc = spawn(process.execPath, [svc.script], {
     cwd: svc.cwd,
-    shell: true,
+    windowsHide: true,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -224,7 +246,7 @@ app.use((_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+if (require.main === module) app.listen(PORT, () => {
   console.log(`🖥️  GUI Service escuchando en http://localhost:${PORT}`);
 });
 

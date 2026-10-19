@@ -1,6 +1,6 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { catalogServiceUrl, quantServiceUrl } = require('./config/env');
+const { catalogServiceUrl, quantServiceUrl, spreadServiceUrl } = require('./config/env');
 const app = express();
 
 app.get('/health', (_request, response) => {
@@ -51,6 +51,16 @@ app.use(
     },
   }),
 );
+
+app.use(createProxyMiddleware({
+  target: spreadServiceUrl,
+  changeOrigin: true,
+  pathFilter: path => path === '/api/v1/spreads' || path.startsWith('/api/v1/spreads/'),
+  on: { error: (_error, _req, res) => {
+    if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'No se pudo contactar al spread-service.' }));
+  } },
+}));
 
 app.use((req, res) => {
   res.status(404).json({ message: `Ruta no encontrada: ${req.method} ${req.originalUrl}` });
