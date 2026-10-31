@@ -18,12 +18,15 @@ class AlpacaAdapter extends BrokerAdapter {
     this.fetch = fetchImplementation;
   }
 
-  async request(baseUrl, path) {
+  async request(baseUrl, path, options = {}) {
     const response = await this.fetch(`${baseUrl}${path}`, {
+      method: options.method || 'GET',
       headers: {
         'APCA-API-KEY-ID': this.keyId,
         'APCA-API-SECRET-KEY': this.secretKey,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       },
+      ...(options.body ? { body: options.body } : {}),
     });
     const body = await response.json();
     if (!response.ok) {
@@ -66,6 +69,110 @@ class AlpacaAdapter extends BrokerAdapter {
       askSize: quote.quote?.as ?? null,
       timestamp: quote.quote?.t ?? null,
     };
+  }
+
+  async getCandles({ symbol, timeframe = '1Day', limit = 100, start, end, sort } = {}) {
+    if (!symbol || !/^[A-Z0-9.-]+$/i.test(symbol)) {
+      const error = new Error('symbol debe ser un ticker válido.');
+      error.status = 400;
+      throw error;
+    }
+    const params = new URLSearchParams({
+      timeframe,
+      limit: String(Math.min(Math.max(Number(limit) || 100, 1), 10000)),
+    });
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+    if (sort) params.set('sort', sort);
+    const response = await this.request(
+      this.dataBaseUrl,
+      `/v2/stocks/${encodeURIComponent(symbol.toUpperCase())}/bars?${params.toString()}`,
+    );
+    const bars = (response.bars || []).map((bar) => ({
+      timestamp: bar.t,
+      open: bar.o,
+      high: bar.h,
+      low: bar.l,
+      close: bar.c,
+      volume: bar.v,
+      tradeCount: bar.n ?? null,
+      vwap: bar.vw ?? null,
+    }));
+
+    return {
+      provider: 'alpaca',
+      symbol: symbol.toUpperCase(),
+      timeframe,
+      bars,
+      nextPageToken: response.next_page_token ?? null,
+      capturedAt: new Date().toISOString(),
+    };
+  }
+
+  async createOrder({ symbol, qty, side, type = 'market', timeInForce = 'day', limitPrice, stopLossPrice } = {}) {
+    if (!symbol || !qty || !['buy', 'sell'].includes(String(side || '').toLowerCase())) {
+      const error = new Error('createOrder requiere symbol, qty y side (buy|sell).');
+      error.status = 400;
+      throw error;
+    }
+    const order = {
+      symbol: symbol.toUpperCase(),
+      qty: String(qty),
+      side: String(side).toLowerCase(),
+      type,
+      time_in_force: timeInForce,
+    };
+    if (type === 'limit' || type === 'stop_limit') order.limit_price = String(limitPrice ?? 0);
+    if (type === 'stop' || type === 'stop_limit') order.stop_price = String(stopLossPrice ?? 0);
+
+    const created = await this.request(this.tradingBaseUrl, '/v2/orders', {
+      method: 'POST',
+      body: JSON.stringify(order),
+    });
+
+    return {
+      provider: 'alpaca',
+      id: created.id ?? null,
+      clientOrderId: created.client_order_id ?? null,
+      status: created.status ?? null,
+      symbol: created.symbol ?? symbol.toUpperCase(),
+      qty: created.qty ?? String(qty),
+      side: created.side ?? String(side).toLowerCase(),
+      type: created.type ?? type,
+      timeInForce: created.time_in_force ?? timeInForce,
+      limitPrice: created.limit_price ?? null,
+      createdAt: created.created_at ?? new Date().toISOString(),
+    };
+  }
+
+  async createSpread({ symbol, legs }) {
+    if (!symbol || !Array.isArray(legs) || legs.length < 2) {
+      const error = new Error('createSpread requiere symbol y legs con al menos dos patas.');
+      error.status = 400;
+      throw error;
+    }
+    const spreadLegs = legs.map((leg) => ({
+      symbol: leg.symbol,
+      qty: String(leg.qty ?? 1),
+      side: leg.side,
+      type: leg.type || 'market',
+      time_in_force: leg.timeInForce || 'day',
+      ...(leg.stopLossPrice !== undefined ? { stop_price: String(leg.stopLossPrice) } : {}),
+      ...(leg.limitPrice !== undefined ? { limit_price: String(leg.limitPrice) } : {}),
+    }));
+    const created = await this.request(this.tradingBaseUrl, '/v2/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        symbol: symbol.toUpperCase(),
+        legs: spreadLegs,
+        qty: String(legs.reduce((total, leg) => total + Number(leg.qty ?? 1), 0)),
+        side: legs[0].side,
+        position_intent: legs[0].side === 'buy' ? 'buy_to_open' : 'sell_to_open',
+        type: 'market',
+        time_in_force: 'day',
+      }),
+    });
+    return { provider: 'alpaca', ...created, legs: created.legs || spreadLegs };
   }
 
   async getOptionChain({ symbol, expiration, strikeRange, limit = 100 }) {

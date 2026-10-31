@@ -303,6 +303,7 @@
       <button class="tab-btn" id="tab-btn-prices" onclick="showTab('prices')">💰 Precios Black-Scholes</button>
       <button class="tab-btn" id="tab-btn-greeks" onclick="showTab('greeks')">⚖️ Griegas</button>
       <button class="tab-btn" id="tab-btn-iv" onclick="showTab('iv')">📊 Volatilidad Implícita</button>
+      <button class="tab-btn" id="tab-btn-candles" onclick="showTab('candles')">🕯️ Gráfica</button>
     </div>
 
     <!-- ── Estrategia ── -->
@@ -359,6 +360,33 @@
         <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
           <button type="button" class="btn btn-warning" id="btnFetchQuotes">📊 Obtener cotizaciones (Alpaca)</button>
           <button type="button" class="btn btn-primary btn-block" id="btnEvaluate">🧮 Evaluar estrategia</button>
+          <button type="button" class="btn btn-success btn-block" id="btnExecutePaper">🚀 Ejecutar Bull/Bear en Paper</button>
+
+        <div id="executionSummary" style="display:none;">
+          <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resumen de ejecución</h3>
+          <div class="small-note" id="executionNote"></div>
+          <div class="results-grid" id="executionOrdersGrid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Automatización (opcional)</h2>
+          <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.9rem;">
+            <input type="checkbox" id="chkStopLoss" style="width:auto;" />
+            Stop loss automático en las órdenes
+          </label>
+          <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.9rem;">
+            <input type="checkbox" id="chkAutoStrikes" style="width:auto;" />
+            Selección automática de strikes y primas desde Alpaca
+          </label>
+          <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.9rem;">
+            <input type="checkbox" id="chkAutoCycle" style="width:auto;" />
+            Ciclo automático de re-evaluación y ejecución
+          </label>
+          <div id="optCycleContainer" style="display:none;">
+            <label>Intervalo del ciclo (horas)</label>
+            <input type="number" id="optCycleHours" value="24" min="1" max="168" />
+          </div>
+        </div>
         </div>
       </div>
 
@@ -565,6 +593,48 @@
             <tbody id="ivTable"></tbody>
           </table>
           <div class="small-note" id="ivNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Gráfica de Candles ── -->
+    <div id="tab-candles" class="tab-content">
+      <div class="card">
+        <h2>Gráfica de Candles — Alpaca</h2>
+        <p class="small-note">Elige un ticker antes de mostrar la gráfica: se cargan las velas históricas de Alpaca para el símbolo que selecciontes.</p>
+
+        <form id="candlesForm" class="row">
+          <div>
+            <label>Símbolo (Ticker)</label>
+            <input type="text" id="chSymbol" placeholder="Ej: AAPL" required />
+          </div>
+          <div>
+            <label>Timeframe</label>
+            <select id="chTimeframe">
+              <option value="1Min">1 Min</option>
+              <option value="5Min">5 Min</option>
+              <option value="15Min">15 Min</option>
+              <option value="30Min">30 Min</option>
+              <option value="1Hour">1 Hora</option>
+              <option value="4Hour">4 Horas</option>
+              <option value="12Hour">12 Horas</option>
+              <option value="1Day" selected>1 Día</option>
+              <option value="1Week">1 Semana</option>
+            </select>
+          </div>
+          <div>
+            <label>Límite de velas</label>
+            <input type="number" id="chLimit" value="100" min="1" max="10000" />
+          </div>
+        </form>
+
+        <button type="button" class="btn btn-primary btn-block" id="btnLoadCandles">📊 Mostrar gráfica</button>
+
+        <div id="candlesChartContainer" style="display:none;">
+          <div class="small-note" id="candlesMeta" style="margin-bottom:0.75rem;"></div>
+          <div class="results-grid" id="candlesMetricsGrid"></div>
+          <svg id="candlesChart" viewBox="0 0 900 420" style="width:100%; height:auto; display:block; background:var(--panel); border:1px solid var(--border); border-radius:12px;"></svg>
+          <div class="small-note" id="candlesNote"></div>
         </div>
       </div>
     </div>
@@ -1184,6 +1254,361 @@ document.getElementById('btnCalcIV').addEventListener('click', async () => {
       btn.textContent = '🧮 Calcular volatilidad implícita';
     }
   }
+});
+
+// ── Candlestick Chart ──
+function formatPrice(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '$0.00';
+  return `$${number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatAxisTime(timestamp, timeframe) {
+  const date = new Date(timestamp);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  if (/Min|Hour/.test(timeframe)) return `${hours}:${minutes}`;
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  if (/Week/.test(timeframe)) return `${day}/${month}`;
+  return `${day}/${month}`;
+}
+
+function renderCandlesChart(candles, timeframe) {
+  const width = 900;
+  const height = 420;
+  const padLeft = 62;
+  const padRight = 16;
+  const padTop = 16;
+  const padBottom = 34;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  let min = Infinity;
+  let max = -Infinity;
+  candles.forEach((candle) => {
+    min = Math.min(min, candle.low);
+    max = Math.max(max, candle.high);
+  });
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    min = min - 1;
+    max = max + 1;
+  }
+  const pricePadding = (max - min) * 0.08;
+  min -= pricePadding;
+  max += pricePadding;
+
+  const y = (value) => padTop + (1 - (value - min) / (max - min)) * plotH;
+  const xForIndex = (index) => padLeft + (candles.length <= 1 ? plotW / 2 : (index / (candles.length - 1)) * plotW);
+  const step = plotW / Math.max(candles.length - 1, 1);
+  const bodyWidth = Math.max(Math.min(12, step * 0.7), 1);
+
+  const gridColors = { line: '#334155', text: '#94a3b8', up: '#22c55e', down: '#ef4444' };
+  let gridLines = '';
+  let yLabels = '';
+  [0, 0.25, 0.5, 0.75, 1].forEach((fraction) => {
+    const value = min + (max - min) * fraction;
+    const yPosition = y(value);
+    gridLines += `<line x1="${padLeft}" y1="${yPosition}" x2="${width - padRight}" y2="${yPosition}" stroke="${gridColors.line}" stroke-width="1" />`;
+    yLabels += `<text x="${padLeft - 8}" y="${yPosition}" textAnchor="end" dominantBaseline="middle" font-size="11" fill="${gridColors.text}">${formatPrice(value)}</text>`;
+  });
+
+  let shapes = '';
+  candles.forEach((candle, index) => {
+    const x = xForIndex(index);
+    const openY = y(candle.open);
+    const closeY = y(candle.close);
+    const color = candle.close >= candle.open ? gridColors.up : gridColors.down;
+    shapes += `<line x1="${x}" y1="${y(candle.high)}" x2="${x}" y2="${y(candle.low)}" stroke="${color}" stroke-width="1" />`;
+    const bodyTop = Math.min(openY, closeY);
+    const bodyHeight = Math.max(Math.abs(closeY - openY), 1);
+    shapes += `<rect x="${x - bodyWidth / 2}" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="${color}" rx="1" />`;
+  });
+
+  const lastCandle = candles[candles.length - 1];
+  const lastPriceY = y(lastCandle.close);
+  const lastPriceColor = lastCandle.close >= lastCandle.open ? gridColors.up : gridColors.down;
+  shapes += `<line x1="${padLeft}" y1="${lastPriceY}" x2="${width - padRight}" y2="${lastPriceY}" stroke="${lastPriceColor}" stroke-width="1" stroke-dasharray="4 3" />`;
+  shapes += `<text x="${width - padRight}" y="${lastPriceY - 5}" textAnchor="end" font-size="11" font-weight="700" fill="${lastPriceColor}">${formatPrice(lastCandle.close)}</text>`;
+
+  const tickCount = Math.min(6, candles.length);
+  let xLabels = '';
+  for (let i = 0; i < tickCount; i += 1) {
+    const index = Math.round((i * (candles.length - 1)) / Math.max(tickCount - 1, 1));
+    const text = formatAxisTime(candles[index].timestamp, timeframe);
+    const xPosition = xForIndex(index);
+    const anchor = index === 0 ? 'start' : index === candles.length - 1 ? 'end' : 'middle';
+    xLabels += `<text x="${xPosition}" y="${height - 10}" textAnchor="${anchor}" font-size="11" fill="${gridColors.text}">${text}</text>`;
+  }
+
+  document.getElementById('candlesChart').innerHTML = `
+    <g>
+      ${gridLines}
+      <g>${shapes}</g>
+      ${xLabels}
+      ${yLabels}
+    </g>
+  `;
+}
+
+function renderCandles(data) {
+  const candles = (data.bars || []).slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const container = document.getElementById('candlesChartContainer');
+  const grid = document.getElementById('candlesMetricsGrid');
+  const meta = document.getElementById('candlesMeta');
+  const note = document.getElementById('candlesNote');
+
+  if (!candles.length) {
+    container.style.display = 'none';
+    note.textContent = `No se encontraron velas para ${data.symbol || 'este ticker'} con timeframe ${data.timeframe || ''}.`;
+    showAlert(`No se encontraron velas para ${data.symbol || 'el ticker elegido'}.`, 'error');
+    return;
+  }
+
+  container.style.display = 'block';
+  meta.innerHTML = `Símbolo <strong>${escapeHtml(data.symbol)}</strong> · Timeframe ${escapeHtml(data.timeframe)} · ${candles.length} velas · Capturadas ${escapeHtml(data.capturedAt || '')}`;
+
+  const last = candles[candles.length - 1];
+  const prev = candles[candles.length - 2];
+  const hasPrev = Boolean(prev);
+  const change = hasPrev ? last.close - prev.close : 0;
+  const changePct = hasPrev && prev.close ? (change / prev.close) * 100 : 0;
+  let periodMin = Infinity;
+  let periodMax = -Infinity;
+  candles.forEach((candle) => {
+    periodMin = Math.min(periodMin, candle.low);
+    periodMax = Math.max(periodMax, candle.high);
+  });
+
+  const metrics = [
+    { label: 'Símbolo', value: data.symbol, neutral: true },
+    { label: 'Timeframe', value: data.timeframe, neutral: true },
+    { label: 'Velas', value: String(candles.length), neutral: true },
+    { label: 'Último Close', value: formatPrice(last.close), neutral: true },
+    { label: 'Apertura', value: formatPrice(last.open), neutral: true },
+    { label: 'Máximo', value: formatPrice(last.high), neutral: true },
+    { label: 'Mínimo', value: formatPrice(last.low), neutral: true },
+    { label: 'Cambio (Close)', value: hasPrev ? `${change >= 0 ? '+' : '-'}${Math.abs(change).toFixed(2)}` : '—', pos: hasPrev && change >= 0, neg: hasPrev && change < 0 },
+    { label: 'Cambio (%)', value: hasPrev ? `${change >= 0 ? '+' : '-'}${changePct.toFixed(2)}%` : '—', pos: hasPrev && change >= 0, neg: hasPrev && change < 0 },
+    { label: 'Volumen', value: Number(last.volume ?? 0).toLocaleString('en-US'), neutral: true },
+    { label: 'Rango del período', value: `${formatPrice(periodMin)} – ${formatPrice(periodMax)}`, neutral: true },
+  ];
+
+  grid.innerHTML = '';
+  metrics.forEach((m) => {
+    const el = document.createElement('div');
+    el.className = 'metric-card';
+    el.innerHTML = `<div class="label">${m.label}</div><div class="value ${m.pos ? 'pos' : m.neg ? 'neg' : 'neutral'}">${escapeHtml(m.value)}</div>`;
+    grid.appendChild(el);
+  });
+
+  renderCandlesChart(candles, data.timeframe);
+  document.getElementById('candlesNote').textContent = `Gráfica de ${data.symbol} (${data.timeframe}) renderizada con ${candles.length} velas.`;
+}
+
+document.getElementById('btnLoadCandles').addEventListener('click', async () => {
+  const symbol = document.getElementById('chSymbol').value.trim().toUpperCase();
+  const timeframe = document.getElementById('chTimeframe').value;
+  const limit = Number(document.getElementById('chLimit').value || 100);
+
+  if (!symbol) {
+    showAlert('Elige un ticker antes de mostrar la gráfica.', 'error');
+    return;
+  }
+  if (!/^[A-Z0-9.-]{1,12}$/.test(symbol)) {
+    showAlert('El ticker debe tener entre 1 y 12 caracteres alfanuméricos.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnLoadCandles');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Cargando velas...';
+
+  try {
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/broker/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=${limit}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `quant-service respondió ${res.status}`);
+    renderCandles(data);
+    showAlert(`Gráfica de ${data.symbol} (${data.timeframe}) cargada desde Alpaca.`, 'info');
+  } catch (e) {
+    showAlert(e.message, 'error');
+    log('Error candles: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📊 Mostrar gráfica';
+  }
+});
+
+function renderExecutionSummary(result, orders) {
+  const container = document.getElementById('executionSummary');
+  const grid = document.getElementById('executionOrdersGrid');
+  grid.innerHTML = '';
+  orders.forEach((o) => {
+    const el = document.createElement('div');
+    el.className = 'metric-card';
+    el.innerHTML = `<div class="label">Orden ${o.id || ''}</div><div class="value neutral">${o.side.toUpperCase()} ${o.qty} ${o.symbol} ${o.type.toUpperCase()} · Strike ${o.strike}</div><div class="value neutral" style="font-size:1rem;">${o.status}</div>`;
+    grid.appendChild(el);
+  });
+  container.style.display = 'block';
+}
+
+async function runPaperExecution() {
+  const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+  const expiration = document.getElementById('expiration').value.trim();
+  const strikeLong = Number(document.getElementById('strikeLong').value);
+  const strikeShort = Number(document.getElementById('strikeShort').value);
+  const priceLong = document.getElementById('priceLong').value.trim();
+  const priceShort = document.getElementById('priceShort').value.trim();
+  const quantity = Number(document.getElementById('quantity').value || 1);
+  const multiplier = Number(document.getElementById('multiplier').value || 100);
+  const strategy = selectedStrategy;
+
+  if (!symbol || !expiration) {
+    showAlert('Ingresa símbolo y vencimiento primero.', 'error');
+    return;
+  }
+  if (!document.getElementById('chkAutoStrikes').checked) {
+    if (!strikeLong || !strikeShort) {
+      showAlert('Ingresa ambos strikes.', 'error');
+      return;
+    }
+    if (!priceLong || !priceShort) {
+      showAlert('Ingresa ambos precios (compra y venta). Usa "Obtener cotizaciones" o escríbelos manualmente.', 'error');
+      return;
+    }
+  }
+
+  const optionType = strategy.includes('CALL') ? 'call' : 'put';
+  let legs = [
+    { type: optionType, side: 'buy', strike: strikeLong, price: Number(priceLong) },
+    { type: optionType, side: 'sell', strike: strikeShort, price: Number(priceShort) },
+  ];
+
+  if (document.getElementById('chkAutoStrikes').checked) {
+    const chainRes = await fetch(`${QUANT_SERVICE_URL}/api/v1/broker/options-chain?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&limit=200`);
+    const chain = await chainRes.json();
+    const contracts = (chain.contracts || []).filter((c) => c.type === optionType && c.bid && c.ask);
+    contracts.sort((a, b) => a.strike - b.strike);
+    let selected = null;
+    for (let i = 0; i < contracts.length - 1; i++) {
+      const lower = contracts[i];
+      const higher = contracts[i + 1];
+      const width = higher.strike - lower.strike;
+      const debit = lower.ask - higher.bid;
+      if (width > 0 && debit > 0 && debit < width) { selected = { lower, higher, width, debit }; break; }
+    }
+    if (!selected) throw new Error('No se encontró un spread válido automático para este ticker y vencimiento.');
+    legs = [
+      { type: optionType, side: 'buy', strike: selected.lower.strike, price: selected.lower.ask },
+      { type: optionType, side: 'sell', strike: selected.higher.strike, price: selected.higher.bid },
+    ];
+  }
+
+  const body = {
+    strategyType: strategy,
+    symbol,
+    expiration,
+    quantity,
+    multiplier,
+    legs,
+  };
+
+  const btn = document.getElementById('btnExecutePaper');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Ejecutando en paper...';
+
+  try {
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/strategies/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || `quant-service respondió ${res.status}`);
+
+    // Ejecutar la estrategia: colocar una orden por cada pata en la cuenta paper.
+    const useStopLoss = document.getElementById('chkStopLoss').checked;
+    const stopLossPerShare = (result.maxLoss || 0) / (result.quantity || 1);
+    const optionLetter = (optionType) => (optionType === 'put' ? 'P' : 'C');
+    const buildContractSymbol = (leg) => `${result.symbol}${String(result.expiration || '').replaceAll('-', '')}${optionLetter(leg.type)}${String(Math.round(leg.strike * 1000)).padStart(8, '0')}`;
+    const spreadRes = await fetch(`${QUANT_SERVICE_URL}/api/v1/broker/spreads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: result.symbol,
+        legs: (result.legs || []).map((leg) => ({
+          symbol: buildContractSymbol(leg),
+          qty: result.quantity,
+          side: leg.side,
+          type: useStopLoss ? 'stop_limit' : 'limit',
+          timeInForce: 'day',
+          limitPrice: leg.price,
+          ...(useStopLoss ? { stopLossPrice: leg.side === 'buy' ? leg.price - stopLossPerShare : leg.price + stopLossPerShare } : {}),
+        })),
+      }),
+    });
+    const spreadData = await spreadRes.json().catch(() => ({}));
+    if (!spreadRes.ok) throw new Error(spreadData.detail || spreadData.message || `No se pudo crear el spread (${result.strategyType}).`);
+    const orders = (result.legs || []).map((leg) => ({
+      ...leg,
+      qty: result.quantity,
+      type: useStopLoss ? 'stop_limit' : 'limit',
+      strike: leg.strike,
+      symbol: buildContractSymbol(leg),
+      id: spreadData.id,
+      status: spreadData.status,
+    }));
+
+    const strategyNames = {
+      BULL_CALL_SPREAD: 'Bull Call Spread',
+      BULL_PUT_SPREAD: 'Bull Put Spread',
+      BEAR_CALL_SPREAD: 'Bear Call Spread',
+      BEAR_PUT_SPREAD: 'Bear Put Spread',
+    };
+    const friendlyText = {
+      BULL_CALL_SPREAD: 'Se compró un spread call alcista (compra call + venta call más alta), pensado para ganar si el precio sube, con pérdida limitada.',
+      BULL_PUT_SPREAD: 'Se compró un spread put alcista (compra put + venta put más alta), pensado para ganar si el precio cae, con pérdida limitada.',
+      BEAR_CALL_SPREAD: 'Se vendió un spread call bajista (venta call + compra call más baja), pensado para ganar el crédito por una baja, con pérdida acotada por el crédito.',
+      BEAR_PUT_SPREAD: 'Se vendió un spread put bajista (venta put + compra put más baja), pensado para ganar el crédito por una subida, con pérdida acotada por el crédito.',
+    };
+    const friendlyStrategyName = strategyNames[result.strategyType] || result.strategyType;
+
+    const recommendation = `Se recomienda mantener la posición hasta el vencimiento (${result.expiration}) o hasta alcanzar el objetivo (break even: $${result.breakEven}).`;
+
+    document.getElementById('executionNote').textContent =
+      `Acción ejecutada: ${friendlyStrategyName} sobre ${result.symbol}. ${friendlyText[result.strategyType] || ''} Break even: $${result.breakEven}. Máx. pérdida: $${result.maxLoss}. Máx. ganancia: $${result.maxProfit}. Recomendación: ${recommendation}`;
+
+    renderExecutionSummary(result, orders);
+
+    showAlert(`Spread ${result.strategyType} evaluado y enviado a la cuenta paper de Alpaca.`, 'info');
+    log(`Spread enviado a paper: ${orders.map((o) => `${o.side.toUpperCase()} ${o.qty} ${o.symbol} (${o.type} ${o.strike}) — status=${o.status}`).join(' | ')}`);
+  } catch (e) {
+    showAlert('Error ejecutando en paper: ' + e.message, 'error');
+    log('Error execute paper: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Ejecutar Bull/Bear en Paper';
+  }
+}
+
+document.getElementById('btnExecutePaper').addEventListener('click', () => runPaperExecution());
+
+// ── Ciclo automático (opcional) ──
+let autoCycleTimer = null;
+
+function startAutoCycle() {
+  if (autoCycleTimer) return;
+  const hours = Math.min(Math.max(Number(document.getElementById('optCycleHours').value) || 24, 1), 168);
+  autoCycleTimer = setInterval(() => { runPaperExecution(); }, hours * 3600000);
+}
+
+function stopAutoCycle() {
+  if (autoCycleTimer) { clearInterval(autoCycleTimer); autoCycleTimer = null; }
+}
+
+document.getElementById('chkAutoCycle').addEventListener('change', (event) => {
+  document.getElementById('optCycleContainer').style.display = event.target.checked ? 'block' : 'none';
+  if (event.target.checked) startAutoCycle(); else stopAutoCycle();
 });
 
 // ── Init ──
