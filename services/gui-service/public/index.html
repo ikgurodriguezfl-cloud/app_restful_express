@@ -272,12 +272,90 @@
     .alert-info { background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: var(--accent); }
 
     .small-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+
+    :root { --bg:#0d1218; --panel:#161e28; --panel-hover:#202b38; --text:#e5ecf3; --muted:#93a4b8; --border:#293545; --accent:#50c79a; --accent-hover:#76d6b1; --success:#50c79a; --danger:#f07b85; --direction-wash:#19372f; }
+    body[data-direction="bear"] { --accent:#ef8b91; --accent-hover:#f7a9ae; --direction-wash:#3d252f; }
+    body { background:var(--bg); font-family:'Segoe UI',Arial,sans-serif; font-size:13px; }
+    header { height:78px; position:relative; padding:16px 26px; background:#111923; border-bottom:1px solid var(--border); gap:20px; }
+    header h1 { font-size:18px; font-weight:600; letter-spacing:-.4px; }
+    .brand-caption { color:#7e91a8; font-size:9px; letter-spacing:2px; text-transform:uppercase; }
+    .services-status { gap:12px; flex-wrap:wrap; }
+    .service-chip { border:0; background:transparent; padding:4px 0; font-size:10px; border-radius:0; }
+    .dot { width:6px; height:6px; box-shadow:none!important; }
+    .container { display:grid; grid-template-columns:180px minmax(0,1fr); max-width:none; padding:0; gap:0; }
+    aside { padding:22px 14px; background:#111923; border-right:1px solid var(--border); min-width:0; }
+    main { min-width:0; padding:26px; }
+    .tabs { display:flex; flex-direction:column; margin:0 0 30px; padding:0; border:0; gap:6px; overflow:visible; }
+    .tab-btn { text-align:left; white-space:normal; border:0; border-radius:6px; font-size:12px; padding:12px; }
+    .tab-btn.active { background:#253344; color:#fff; border:0; box-shadow:inset 3px 0 var(--accent); }
+    .workspace-heading { display:flex; justify-content:space-between; gap:15px; margin-bottom:24px; }
+    .workspace-heading h2 { font-size:24px; font-weight:600; letter-spacing:-.6px; }
+    .workspace-heading p { color:var(--muted); font-size:12px; margin-top:4px; }
+    .workspace-tag { align-self:center; border:1px solid var(--border); padding:5px 10px; border-radius:4px; font-size:10px; color:var(--muted); }
+    .card { padding:20px; border-radius:8px; gap:16px; box-shadow:none; }
+    .card h2 { color:var(--text); font-size:13px; font-weight:600; margin:0; }
+    .analysis-layout { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:20px; align-items:start; }
+    .analysis-column { min-width:0; display:flex; flex-direction:column; gap:20px; }
+    .order-panel { grid-column:2; grid-row:1; border-top:2px solid var(--accent); }
+    .analysis-column { grid-column:1; grid-row:1; }
+    #tab-strategy.active { display:block; }
+    .strategy-grid { grid-template-columns:1fr 1fr; gap:8px; }
+    .strategy-chip { border-radius:5px; background:#101720; border-color:#314052; padding:10px; font-weight:600; }
+    .strategy-chip.active { background:var(--direction-wash); color:var(--accent); border-color:var(--accent); }
+    .strategy-chip::after { display:block; font-weight:400; font-size:9px; letter-spacing:.6px; margin-top:3px; }
+    .strategy-chip[data-strategy^="BULL"]::after { content:'ALCISTA'; color:var(--success); }
+    .strategy-chip[data-strategy^="BEAR"]::after { content:'BAJISTA'; color:var(--danger); }
+    .row { gap:12px; }
+    #strategyForm .full:has(#strikeLong),#strategyForm .full:has(#strikeShort),#strategyForm .full:has(#priceLong),#strategyForm .full:has(#priceShort) { grid-column:auto; }
+    label { font-size:10px; color:#a5b5c6; margin-bottom:5px; }
+    input,select,textarea { border-radius:5px; background:#101720; color:var(--text); min-height:36px; padding:8px 10px; font-size:12px; }
+    input:focus-visible,select:focus-visible,button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    .btn { border-radius:5px; min-height:36px; padding:9px 12px; font-size:11px; font-weight:600; }
+    .btn-primary { color:#0d1713; }
+    .btn-warning,.btn-secondary { background:#253344; color:#dce7f2; border:1px solid #3b4b60; }
+    .btn-warning:hover,.btn-secondary:hover { background:#314258; }
+    #btnExecutePaper { background:transparent; border:1px solid #526881; color:#dce7f2; }
+    .order-panel > div[style] { display:grid!important; grid-template-columns:1fr; gap:8px!important; }
+    .order-panel .card { background:#121a23; border:0; padding:14px; border-radius:5px; width:100%; }
+    .order-panel .card label { font-size:10px!important; }
+    #executionSummary { min-width:0; }
+    #executionSummary[style*="none"] { display:none; }
+    .results-grid { grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+    .metric-card { background:#161e28; border:0; border-radius:0; padding:15px; text-align:left; min-width:0; }
+    .metric-card .label { font-size:9px; }
+    .metric-card .value { font-size:21px; font-family:Consolas,monospace; overflow-wrap:anywhere; }
+    .metric-card .value.neutral { color:#e5ecf3; }
+    #resultsCard > .row { order:3; border-top:1px solid var(--border); padding-top:16px; }
+    table { display:block; overflow-x:auto; border-radius:5px; }
+    th { font-size:9px; background:#202b38; white-space:nowrap; }
+    td { font-size:11px; padding:12px; }
+    tr:hover td { background:#1b2836; }
+    .badge { border-radius:3px; }
+    #log { background:#0c131c; font-size:10px; padding:10px; border-radius:4px; max-height:180px; }
+    .service-drawer { border-top:1px solid var(--border); padding-top:15px; }
+    .service-drawer summary { cursor:pointer; color:#9db0c5; font-size:11px; padding:8px 4px; }
+    aside .card { padding:8px 0; background:transparent; border:0; }
+    aside .card h2 { font-size:11px; color:#9db0c5; }
+    aside .btn-success { background:#253344; color:#d7e2ee; border:1px solid #3b4b60; }
+    aside .btn { min-height:28px; padding:5px 8px; font-size:10px; }
+    aside .service-chip { font-size:10px; }
+    #tab-candles .card { min-height:440px; }
+    #tab-candles .row { grid-template-columns:1fr 1fr 1fr; }
+    #candlesChart { border-radius:4px!important; }
+    .chart-empty { display:flex; min-height:240px; align-items:center; justify-content:center; flex-direction:column; gap:8px; color:#a4b4c7; background:repeating-linear-gradient(0deg,transparent,transparent 47px,#253344 48px),repeating-linear-gradient(90deg,transparent,transparent 79px,#253344 80px); border:1px solid var(--border); border-radius:4px; }
+    .chart-empty strong { font-size:16px; color:#dce7f2; font-weight:500; background:#161e28; padding:4px 12px; }
+    .chart-empty span { font-size:11px; background:#161e28; padding:4px 12px; }
+    #tab-candles:has(#candlesChartContainer:not([style*="none"])) .chart-empty { display:none; }
+    @media(max-width:1250px) { .analysis-layout { grid-template-columns:minmax(0,1fr) 310px; } .container { grid-template-columns:155px minmax(0,1fr); } main { padding:20px; } header .services-status { display:none; } }
+    @media(max-width:1000px) { .analysis-layout { display:flex; flex-direction:column; } .analysis-column,.order-panel { width:100%; } .order-panel { order:-1; } }
+    @media(max-width:650px) { .container { display:block; } aside { min-height:0; border:0; padding:10px; } .tabs { flex-direction:row; overflow:auto; margin:0; } .tab-btn { white-space:nowrap; } .service-drawer { margin-top:10px; } main { padding:14px; } .workspace-tag { display:none; } #tab-candles .row { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
 
 <header>
-  <h1><span>▶</span> Trading Dashboard</h1>
+  <div><div class="brand-caption">Mercados · Opciones</div><h1>Mesa de operaciones</h1></div>
   <div class="services-status" id="servicesStatus"></div>
 </header>
 
@@ -289,27 +367,28 @@
     </div>
 
     <div class="card">
-      <h2>Logs</h2>
+      <h2>Registro de actividad</h2>
       <div id="log" class="log"></div>
     </div>
   </aside>
 
   <main>
+    <div class="workspace-heading"><div><h2>Análisis de opciones</h2><p>Estrategias verticales, valoración y datos de mercado.</p></div><span class="workspace-tag">Entorno local</span></div>
     <div id="alertContainer"></div>
 
     <!-- ── Pestañas ── -->
     <div class="tabs">
-      <button class="tab-btn active" id="tab-btn-strategy" onclick="showTab('strategy')">📈 Estrategia</button>
-      <button class="tab-btn" id="tab-btn-prices" onclick="showTab('prices')">💰 Precios Black-Scholes</button>
-      <button class="tab-btn" id="tab-btn-greeks" onclick="showTab('greeks')">⚖️ Griegas</button>
-      <button class="tab-btn" id="tab-btn-iv" onclick="showTab('iv')">📊 Volatilidad Implícita</button>
-      <button class="tab-btn" id="tab-btn-candles" onclick="showTab('candles')">🕯️ Gráfica</button>
+      <button class="tab-btn active" id="tab-btn-strategy" onclick="showTab('strategy')"> Estrategia</button>
+      <button class="tab-btn" id="tab-btn-prices" onclick="showTab('prices')"> Precios Black-Scholes</button>
+      <button class="tab-btn" id="tab-btn-greeks" onclick="showTab('greeks')"> Griegas</button>
+      <button class="tab-btn" id="tab-btn-iv" onclick="showTab('iv')"> Volatilidad Implícita</button>
+      <button class="tab-btn" id="tab-btn-candles" onclick="showTab('candles')"> Gráfica</button>
     </div>
 
     <!-- ── Estrategia ── -->
     <div id="tab-strategy" class="tab-content active">
       <div class="card">
-        <h2>Configurar Estrategia</h2>
+        <h2>Nueva operación</h2>
 
         <div class="strategy-grid" id="strategyGrid">
           <div class="strategy-chip active" data-strategy="BULL_CALL_SPREAD">Bull Call</div>
@@ -320,7 +399,7 @@
 
         <form id="strategyForm" class="row">
           <div class="full">
-            <label>Etiqueta / Label</label>
+            <label>Nombre de la estrategia</label>
             <input type="text" id="label" placeholder="Ej: Mi Bull Call AAPL" required />
           </div>
           <div>
@@ -340,11 +419,11 @@
             <input type="number" id="strikeShort" step="0.01" required />
           </div>
           <div class="full">
-            <label>Precio Compra (Ask) — leave blank to fetch from Alpaca</label>
+            <label>Prima de compra (Ask) · vacía para consultar Alpaca</label>
             <input type="number" id="priceLong" step="0.01" placeholder="auto" />
           </div>
           <div class="full">
-            <label>Precio Venta (Bid) — leave blank to fetch from Alpaca</label>
+            <label>Prima de venta (Bid) · vacía para consultar Alpaca</label>
             <input type="number" id="priceShort" step="0.01" placeholder="auto" />
           </div>
           <div>
@@ -358,9 +437,9 @@
         </form>
 
         <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
-          <button type="button" class="btn btn-warning" id="btnFetchQuotes">📊 Obtener cotizaciones (Alpaca)</button>
-          <button type="button" class="btn btn-primary btn-block" id="btnEvaluate">🧮 Evaluar estrategia</button>
-          <button type="button" class="btn btn-success btn-block" id="btnExecutePaper">🚀 Ejecutar Bull/Bear en Paper</button>
+          <button type="button" class="btn btn-warning" id="btnFetchQuotes"> Obtener cotizaciones (Alpaca)</button>
+          <button type="button" class="btn btn-primary btn-block" id="btnEvaluate"> Evaluar estrategia</button>
+          <button type="button" class="btn btn-success btn-block" id="btnExecutePaper"> Ejecutar Bull/Bear en Paper</button>
 
         <div id="executionSummary" style="display:none;">
           <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resumen de ejecución</h3>
@@ -464,7 +543,7 @@
           </div>
         </form>
 
-        <button type="button" class="btn btn-primary btn-block" id="btnCalcPrices">🧮 Calcular precio</button>
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcPrices"> Calcular precio</button>
 
         <div id="pricesResult" style="margin-top:1.5rem; display:none;">
           <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
@@ -517,7 +596,7 @@
           </div>
         </form>
 
-        <button type="button" class="btn btn-primary btn-block" id="btnCalcGreeks">🧮 Calcular griegas</button>
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcGreeks"> Calcular griegas</button>
 
         <div id="greeksResult" style="margin-top:1.5rem; display:none;">
           <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
@@ -581,7 +660,7 @@
           </div>
         </form>
 
-        <button type="button" class="btn btn-primary btn-block" id="btnCalcIV">🧮 Calcular volatilidad implícita</button>
+        <button type="button" class="btn btn-primary btn-block" id="btnCalcIV"> Calcular volatilidad implícita</button>
 
         <div id="ivResult" style="margin-top:1.5rem; display:none;">
           <h3 style="color:var(--accent); margin-bottom:0.5rem;">Resultado</h3>
@@ -600,7 +679,7 @@
     <!-- ── Gráfica de Candles ── -->
     <div id="tab-candles" class="tab-content">
       <div class="card">
-        <h2>Gráfica de Candles — Alpaca</h2>
+        <h2>Mercado · Alpaca</h2>
         <p class="small-note">Elige un ticker antes de mostrar la gráfica: se cargan las velas históricas de Alpaca para el símbolo que selecciontes.</p>
 
         <form id="candlesForm" class="row">
@@ -628,7 +707,7 @@
           </div>
         </form>
 
-        <button type="button" class="btn btn-primary btn-block" id="btnLoadCandles">📊 Mostrar gráfica</button>
+        <button type="button" class="btn btn-primary btn-block" id="btnLoadCandles"> Mostrar gráfica</button>
 
         <div id="candlesChartContainer" style="display:none;">
           <div class="small-note" id="candlesMeta" style="margin-bottom:0.75rem;"></div>
@@ -642,6 +721,29 @@
 </div>
 
 <script>
+// Composition visuelle uniquement : les contrôles conservent leurs identifiants.
+const navigation = document.querySelector('.tabs');
+const side = document.querySelector('aside');
+const drawer = document.createElement('details');
+drawer.className = 'service-drawer';
+const summary = document.createElement('summary'); summary.textContent = 'Servicios y actividad'; drawer.append(summary);
+while (side.firstChild) drawer.append(side.firstChild);
+side.append(navigation, drawer);
+const strategyView = document.getElementById('tab-strategy');
+const layout = document.createElement('div'); layout.className = 'analysis-layout';
+const analysisColumn = document.createElement('div'); analysisColumn.className = 'analysis-column';
+const orderPanel = strategyView.querySelector(':scope > .card'); orderPanel.classList.add('order-panel');
+const chartView = document.getElementById('tab-candles'); chartView.classList.remove('tab-content');
+const emptyChart = document.createElement('div'); emptyChart.className = 'chart-empty';
+const emptyTitle = document.createElement('strong'); emptyTitle.textContent = 'Données de marché';
+emptyTitle.textContent = 'Datos de mercado';
+const emptyText = document.createElement('span'); emptyText.textContent = 'Selecciona un símbolo y consulta la gráfica de Alpaca.';
+emptyChart.append(emptyTitle, emptyText); chartView.querySelector('.card').append(emptyChart);
+analysisColumn.append(chartView);
+[...strategyView.children].filter(node => node !== orderPanel).forEach(node => analysisColumn.append(node));
+layout.append(analysisColumn, orderPanel); strategyView.append(layout);
+</script>
+<script>
 const API_BASE = '';
 const QUANT_SERVICE_URL = 'http://localhost:3002';
 let selectedStrategy = 'BULL_CALL_SPREAD';
@@ -653,6 +755,7 @@ let history = JSON.parse(localStorage.getItem('td_history') || '[]');
 
 // ── Tabs ──
 function showTab(tabName) {
+  if (tabName === 'candles') { showTab('strategy'); document.getElementById('tab-candles').scrollIntoView({behavior:'smooth',block:'start'}); return; }
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-btn-' + tabName).classList.add('active');
@@ -729,6 +832,7 @@ document.querySelectorAll('.strategy-chip').forEach(chip => {
     document.querySelectorAll('.strategy-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     selectedStrategy = chip.dataset.strategy;
+    document.body.dataset.direction = selectedStrategy.startsWith('BEAR') ? 'bear' : 'bull';
   });
 });
 
@@ -783,7 +887,7 @@ document.getElementById('btnFetchQuotes').addEventListener('click', async () => 
     log('Error fetch quotes: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '📊 Obtener cotizaciones (Alpaca)';
+    btn.textContent = ' Obtener cotizaciones (Alpaca)';
   }
 });
 
@@ -896,7 +1000,7 @@ document.getElementById('btnEvaluate').addEventListener('click', async () => {
     log('Error evaluate: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🧮 Evaluar estrategia';
+    btn.textContent = ' Evaluar estrategia';
   }
 });
 
@@ -1064,7 +1168,7 @@ document.getElementById('btnCalcPrices').addEventListener('click', async () => {
     showAlert('Error calculando precio: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '🧮 Calcular precio';
+    btn.textContent = ' Calcular precio';
   }
 });
 
@@ -1121,7 +1225,7 @@ document.getElementById('btnCalcGreeks').addEventListener('click', async () => {
     showAlert('Error calculando griegas: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '🧮 Calcular griegas';
+    btn.textContent = ' Calcular griegas';
   }
 });
 
@@ -1200,7 +1304,7 @@ document.getElementById('btnCalcIV').addEventListener('click', async () => {
       document.getElementById('ivResult').style.display = 'block';
       showAlert('IV no convergió (422). Revisa los detalles arriba.', 'warning');
       btn.disabled = false;
-      btn.textContent = '🧮 Calcular volatilidad implícita';
+      btn.textContent = ' Calcular volatilidad implícita';
       return;
     }
 
@@ -1251,7 +1355,7 @@ document.getElementById('btnCalcIV').addEventListener('click', async () => {
   } finally {
     if (res.status !== 422) {
       btn.disabled = false;
-      btn.textContent = '🧮 Calcular volatilidad implícita';
+      btn.textContent = ' Calcular volatilidad implícita';
     }
   }
 });
@@ -1361,8 +1465,8 @@ function renderCandles(data) {
   if (!candles.length) {
     container.style.display = 'none';
     note.textContent = `No se encontraron velas para ${data.symbol || 'este ticker'} con timeframe ${data.timeframe || ''}.`;
-    showAlert(`No se encontraron velas para ${data.symbol || 'el ticker elegido'}.`, 'error');
-    return;
+    showAlert(`No se encontraron velas para ${data.symbol || 'el ticker elegido'} en el periodo consultado.`, 'error');
+    return false;
   }
 
   container.style.display = 'block';
@@ -1425,9 +1529,16 @@ document.getElementById('btnLoadCandles').addEventListener('click', async () => 
   btn.innerHTML = '<span class="spinner"></span> Cargando velas...';
 
   try {
-    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/broker/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=${limit}`);
+    const intervalMinutes = timeframe.endsWith('Min') ? parseInt(timeframe, 10) : timeframe.endsWith('Hour') ? parseInt(timeframe, 10) * 60 : timeframe === '1Week' ? 10080 : 1440;
+    const requestedBars = Math.min(Math.max(Math.trunc(limit) || 100, 1), 10000);
+    // Un margen de días naturales cubre sesiones cerradas y fines de semana.
+    const lookbackDays = Math.max(7, Math.ceil(requestedBars * intervalMinutes / 1440 * 2.5));
+    const start = new Date(Date.now() - lookbackDays * 86400000).toISOString();
+    const params = new URLSearchParams({symbol, timeframe, limit: String(requestedBars), start, sort: 'desc'});
+    const res = await fetch(`${QUANT_SERVICE_URL}/api/v1/broker/candles?${params}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || `quant-service respondió ${res.status}`);
+    if (!Array.isArray(data.bars) || data.bars.length === 0) { renderCandles(data); return; }
     renderCandles(data);
     showAlert(`Gráfica de ${data.symbol} (${data.timeframe}) cargada desde Alpaca.`, 'info');
   } catch (e) {
@@ -1435,7 +1546,7 @@ document.getElementById('btnLoadCandles').addEventListener('click', async () => 
     log('Error candles: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '📊 Mostrar gráfica';
+    btn.textContent = ' Mostrar gráfica';
   }
 });
 
@@ -1587,7 +1698,7 @@ async function runPaperExecution() {
     log('Error execute paper: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🚀 Ejecutar Bull/Bear en Paper';
+    btn.textContent = ' Ejecutar Bull/Bear en Paper';
   }
 }
 
